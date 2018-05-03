@@ -17,6 +17,7 @@ namespace BTCPayServer.Payments
         /// <summary>
         /// Lightning payment
         /// </summary>
-        LightningLike
+        LightningLike,
+        Manual
     }
 }
