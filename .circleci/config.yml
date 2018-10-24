@@ -4,11 +4,13 @@ jobs:
     working_directory: ~/btcpayserver
     machine: true
     steps: 
+      - run: ls
       - run: docker build .
   test:
     working_directory: ~/btcpayserver
     machine: true
     steps:
+      - run: ls
       - run: cd BTCPayServer.Tests 
       - run: docker-compose up tests
 
