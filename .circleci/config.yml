@@ -9,7 +9,7 @@ jobs:
     machine: true
     steps:
       - checkout
-      - run: docker-compose up -f BTCPayServer.Tests/docker-compose.yml tests
+      - run: docker-compose -f BTCPayServer.Tests/docker-compose.yml up tests
 
 
 workflows:
