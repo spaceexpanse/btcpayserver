@@ -2,11 +2,11 @@ version: 2
 jobs:
   build:
     machine: true
-    - steps: 
+    steps: 
       - run: docker build .
   test:
     machine: true
-    - steps:
+    steps:
       - run: cd BTCPayServer.Tests 
       - run: docker-compose up tests
 
