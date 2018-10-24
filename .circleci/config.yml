@@ -1,10 +1,12 @@
 version: 2
 jobs:
   build:
+    working_directory: ~/btcpayserver
     machine: true
     steps: 
       - run: docker build .
   test:
+    working_directory: ~/btcpayserver
     machine: true
     steps:
       - run: cd BTCPayServer.Tests 
