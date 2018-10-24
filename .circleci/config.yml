@@ -4,6 +4,7 @@ jobs:
     working_directory: ~/btcpayserver
     machine: true
     steps: 
+      - checkout
       - run: pwd
       - run: ls
       - run: docker build .
@@ -11,6 +12,7 @@ jobs:
     working_directory: ~/btcpayserver
     machine: true
     steps:
+      - checkout
       - run: pwd
       - run: ls
       - run: cd BTCPayServer.Tests 
