@@ -16,7 +16,7 @@ jobs:
       - run: sudo apt-get update
       - run: sudo apt-get install dotnet-sdk-2.1
  
-      - run: cd BTCPayServer.Tests && docker-compose up -d && sleep 45s dotnet test
+      - run: cd BTCPayServer.Tests && docker-compose up -d &&  sleep 60  && dotnet test
 
 
 workflows:
