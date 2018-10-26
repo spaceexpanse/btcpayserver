@@ -8,15 +8,15 @@ jobs:
   test:
     machine: true
     steps:
+      - run: lsb_release -a
       - checkout
       - run: wget -q https://packages.microsoft.com/config/ubuntu/14.04/packages-microsoft-prod.deb
       - run: sudo dpkg -i packages-microsoft-prod.deb
       - run: sudo apt-get install apt-transport-https
       - run: sudo apt-get update
       - run: sudo apt-get install dotnet-sdk-2.1
-      - run: lsb_release -a
-      - run: cd BTCPayServer.Tests && docker-compose up -d
-      - run: cd BTCPayServer.Tests && dotnet test
+ 
+      - run: cd BTCPayServer.Tests && docker-compose up -d && dotnet test
 
 
 workflows:
