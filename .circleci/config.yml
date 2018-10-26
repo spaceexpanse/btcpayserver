@@ -1,14 +1,13 @@
 version: 2
 jobs:
   build:
-    docker:
-      - image: docker:dind 
+    machine: 
+      docker_layer_caching: true
     steps: 
       - checkout
       - run: docker build .
   test:
-    docker:
-      - image: docker:dind 
+    machine: true
     steps:
       - checkout
       - run:
