@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AngularApp", "RefreshFlow\A
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ThirdPartyApi", "ThirdPartyApi\ThirdPartyApi.csproj", "{751B1B03-EBDA-4384-987F-BDD993B9824C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClientApp", "CodeFlow\ClientApp\ClientApp.csproj", "{2E8A9868-11F3-454C-BCA8-B063FB4AE5FD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -97,6 +99,18 @@ Global
 		{751B1B03-EBDA-4384-987F-BDD993B9824C}.Release|x64.Build.0 = Release|Any CPU
 		{751B1B03-EBDA-4384-987F-BDD993B9824C}.Release|x86.ActiveCfg = Release|Any CPU
 		{751B1B03-EBDA-4384-987F-BDD993B9824C}.Release|x86.Build.0 = Release|Any CPU
+		{2E8A9868-11F3-454C-BCA8-B063FB4AE5FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2E8A9868-11F3-454C-BCA8-B063FB4AE5FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2E8A9868-11F3-454C-BCA8-B063FB4AE5FD}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{2E8A9868-11F3-454C-BCA8-B063FB4AE5FD}.Debug|x64.Build.0 = Debug|Any CPU
+		{2E8A9868-11F3-454C-BCA8-B063FB4AE5FD}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{2E8A9868-11F3-454C-BCA8-B063FB4AE5FD}.Debug|x86.Build.0 = Debug|Any CPU
+		{2E8A9868-11F3-454C-BCA8-B063FB4AE5FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2E8A9868-11F3-454C-BCA8-B063FB4AE5FD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2E8A9868-11F3-454C-BCA8-B063FB4AE5FD}.Release|x64.ActiveCfg = Release|Any CPU
+		{2E8A9868-11F3-454C-BCA8-B063FB4AE5FD}.Release|x64.Build.0 = Release|Any CPU
+		{2E8A9868-11F3-454C-BCA8-B063FB4AE5FD}.Release|x86.ActiveCfg = Release|Any CPU
+		{2E8A9868-11F3-454C-BCA8-B063FB4AE5FD}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
