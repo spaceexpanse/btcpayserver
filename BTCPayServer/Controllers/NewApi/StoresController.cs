@@ -122,9 +122,11 @@ namespace BTCPayServer.Controllers.NewApi
         [MinLength(1)]
         public string StoreName { get; set; }
 
-        [MaxLength(500)] [Uri] public string StoreWebsite { get; set; }
+        [MaxLength(500)] [Uri] 
+        public string StoreWebsite { get; set; }
         public bool CanDelete { get; set; }
-        [Range(1, 60 * 24 * 24)] public int InvoiceExpiration { get; set; }
+        [Range(1, 60 * 24 * 24)] 
+        public int InvoiceExpiration { get; set; }
         public int MonitoringExpiration { get; set; }
         public SpeedPolicy SpeedPolicy { get; set; }
         public bool NetworkFee { get; set; }
