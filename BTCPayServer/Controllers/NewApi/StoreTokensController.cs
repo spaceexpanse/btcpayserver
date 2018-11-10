@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Threading.Tasks;
 using BTCPayServer.Authentication;
 using BTCPayServer.Models;
@@ -100,8 +101,9 @@ namespace BTCPayServer.Controllers.NewApi
                 return await GetToken(storeId, tokenRequest.PairingCode);
             }
 
-            pairingCode = (await _accessTokenController.Tokens(tokenRequest)).Data[0].PairingCode;
-            var pairing = await _tokenRepository.GetPairingAsync(pairingCode);
+            pairingCode = (await _accessTokenController.Tokens(tokenRequest)).Data.First().PairingCode;
+            
+            return await GetToken(storeId, tokenRequest.PairingCode);
             
         }
 
