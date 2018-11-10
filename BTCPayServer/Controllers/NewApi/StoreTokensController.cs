@@ -1,33 +1,35 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 using BTCPayServer.Authentication;
 using BTCPayServer.Models;
 using BTCPayServer.Models.StoreViewModels;
-using BTCPayServer.Payments;
 using BTCPayServer.Security;
 using BTCPayServer.Validation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NBitcoin;
+using NBitpayClient.Extensions;
 
 namespace BTCPayServer.Controllers.NewApi
 {
     [ApiController]
     [Route("api/v0.1/stores/{storeId}/tokens")]
     [Authorize(Policy = Policies.CanModifyStoreSettings.Key)]
-    [Authorize()]
+    [Authorize]
     public class StoreTokensController : ControllerBase
     {
         private readonly TokenRepository _tokenRepository;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly AccessTokenController _accessTokenController;
 
-        public StoreTokensController(TokenRepository tokenRepository, UserManager<ApplicationUser> userManager)
+        public StoreTokensController(TokenRepository tokenRepository, 
+            UserManager<ApplicationUser> userManager, AccessTokenController accessTokenController)
         {
             _tokenRepository = tokenRepository;
             _userManager = userManager;
+            _accessTokenController = accessTokenController;
         }
 
         [HttpGet("")]
@@ -67,48 +69,40 @@ namespace BTCPayServer.Controllers.NewApi
         }
         
         [HttpPost("")]
-        public async Task<ActionResult> CreateToken(string storeId, [FromBody]CreateTokenRequest request)
+        public async Task<ActionResult<BitTokenEntity>> CreateToken(string storeId, [FromBody]CreateTokenRequest request)
         {
-//            var tokenRequest = new TokenRequest()
-//            {
-//                Facade = request.Facade,
-//                Label = request.Label,
-//                Id = request.PublicKey == null
-//                    ? null
-//                    : NBitpayClient.Extensions.BitIdExtensions.GetBitIDSIN(new PubKey(request.PublicKey))
-//            };
-//            
-//            string pairingCode = null;
-//            if (request.PublicKey == null)
-//            {
-//                tokenRequest.PairingCode = await _tokenRepository.CreatePairingCodeAsync();
-//                await _tokenRepository.UpdatePairingCode(new PairingCodeEntity()
-//                {
-//                    Id = tokenRequest.PairingCode,
-//                    Facade = request.Facade,
-//                    Label = request.Label,
-//                });
-//                var result = await _tokenRepository.PairWithStoreAsync(tokenRequest.PairingCode, storeId);
-//                if (result == PairingResult.ReusedKey)
-//                {
-//                    ModelState.AddModelError(nameof(CreateTokenRequest.PublicKey), "Key was reused.");
-//                    return BadRequest(ModelState);
-//                }else
-//                pairingCode = tokenRequest.PairingCode;
-//            }
-//            else
-//            {
-//                pairingCode = ((DataWrapper<List<PairingCodeResponse>>)await _TokenController.Tokens(tokenRequest)).Data[0].PairingCode;
-//            }
-//
-//            GeneratedPairingCode = pairingCode;
-//            return RedirectToAction(nameof(RequestPairing), new
-//            {
-//                pairingCode = pairingCode,
-//                selectedStore = storeId
-//            });
-//            
-//            return Ok();
+            var tokenRequest = new TokenRequest
+            {
+                Facade = request.Facade,
+                Label = request.Label,
+                Id = request.PublicKey == null
+                    ? null
+                    : BitIdExtensions.GetBitIDSIN(new PubKey(request.PublicKey))
+            };
+            
+            string pairingCode = null;
+            if (request.PublicKey == null)
+            {
+                tokenRequest.PairingCode = await _tokenRepository.CreatePairingCodeAsync();
+                await _tokenRepository.UpdatePairingCode(new PairingCodeEntity
+                {
+                    Id = tokenRequest.PairingCode,
+                    Facade = request.Facade,
+                    Label = request.Label
+                });
+                var result = await _tokenRepository.PairWithStoreAsync(tokenRequest.PairingCode, storeId);
+                if (result == PairingResult.ReusedKey)
+                {
+                    ModelState.AddModelError(nameof(CreateTokenRequest.PublicKey), "Key was reused.");
+                    return BadRequest(ModelState);
+                }
+
+                return await GetToken(storeId, tokenRequest.PairingCode);
+            }
+
+            pairingCode = (await _accessTokenController.Tokens(tokenRequest)).Data[0].PairingCode;
+            var pairing = await _tokenRepository.GetPairingAsync(pairingCode);
+            
         }
 
         [HttpGet("")]
