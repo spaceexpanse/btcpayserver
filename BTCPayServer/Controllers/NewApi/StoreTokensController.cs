@@ -103,14 +103,8 @@ namespace BTCPayServer.Controllers.NewApi
 
             pairingCode = (await _accessTokenController.Tokens(tokenRequest)).Data.First().PairingCode;
             
-            return await GetToken(storeId, tokenRequest.PairingCode);
+            return await GetToken(storeId, pairingCode);
             
-        }
-
-        [HttpGet("")]
-        public async Task<ActionResult<TokensViewModel>> CreateToken(string storeId)
-        {
-            return Ok(await _tokenRepository.GetTokensByStoreIdAsync(storeId));
         }
     }
 

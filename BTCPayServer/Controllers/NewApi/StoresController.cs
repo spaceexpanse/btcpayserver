@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Threading.Tasks;
 using BTCPayServer.Data;
 using BTCPayServer.Models;
@@ -14,7 +15,7 @@ using Microsoft.AspNetCore.Identity;
 namespace BTCPayServer.Controllers.NewApi
 {
     [ApiController]
-    [Route("api/v1.0/[controller]")]
+    [Route("api/v0.1/[controller]")]
     [Authorize()]
     public class StoresController : ControllerBase
     {
@@ -28,10 +29,10 @@ namespace BTCPayServer.Controllers.NewApi
         }
 
         [HttpGet("")]
-        public async Task<ActionResult<IEnumerable<StoreData>>> GetStores()
+        public async Task<ActionResult<IEnumerable<StoreModel>>> GetStores()
         {
             var stores = await _storeRepository.GetStoresByUserId(_userManager.GetUserId(User));
-            return Ok(stores);
+            return Ok(stores.Select(data => new StoreModel(data, _storeRepository.CanDeleteStores())));
         }
 
         [HttpGet("{storeId}")]
@@ -111,6 +112,7 @@ namespace BTCPayServer.Controllers.NewApi
 
     public class UpdateStoreRequest : StoreModel
     {
+        
     }
 
     public class StoreModel

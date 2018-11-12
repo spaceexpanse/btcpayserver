@@ -19,7 +19,7 @@ namespace BTCPayServer.Controllers.NewApi
             return Ok(new List<string>()
             {
                 nameof(PaymentTypes.BTCLike),
-                nameof(PaymentTypes.LightningLike),
+//                nameof(PaymentTypes.LightningLike),
             });
         }
     }
