@@ -15,14 +15,14 @@ using Microsoft.AspNetCore.Identity;
 namespace BTCPayServer.Controllers.NewApi
 {
     [ApiController]
-    [Route("api/v0.1/[controller]")]
+    [Route("api/v0.1/stores")]
     [Authorize()]
-    public class StoresController : ControllerBase
+    public class StoresApiController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly StoreRepository _storeRepository;
 
-        public StoresController(UserManager<ApplicationUser> userManager, StoreRepository storeRepository)
+        public StoresApiController(UserManager<ApplicationUser> userManager, StoreRepository storeRepository)
         {
             _userManager = userManager;
             _storeRepository = storeRepository;
