@@ -19,6 +19,7 @@ namespace BTCPayServer.Controllers.NewApi
     [Route("api/v0.1/stores/{storeId}/tokens")]
     [Authorize(Policy = Policies.CanModifyStoreSettings.Key)]
     [Authorize]
+    [IncludeInOpenApiDocs]
     public class StoreTokensController : ControllerBase
     {
         private readonly TokenRepository _tokenRepository;

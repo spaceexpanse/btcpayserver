@@ -13,16 +13,20 @@ using Microsoft.Extensions.Configuration;
 using Hangfire.AspNetCore;
 using BTCPayServer.Configuration;
 using System.IO;
+using System.Linq;
 using System.Net;
 using Hangfire.Dashboard;
 using Hangfire.Annotations;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Security.Cryptography;
 using AspNet.Security.OpenIdConnect.Primitives;
+using BTCPayServer.Controllers.NewApi;
 using BTCPayServer.Security;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.IdentityModel.Tokens;
 using NETCore.Encrypt.Extensions.Internal;
+using Swashbuckle.AspNetCore.Swagger;
+using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace BTCPayServer.Hosting
 {
@@ -152,6 +156,36 @@ namespace BTCPayServer.Hosting
                     b.AllowAnyMethod().AllowAnyHeader().AllowAnyOrigin();
                 });
             });
+            services.AddSwaggerGen(c =>  
+            {  
+                c.DocInclusionPredicate((s, description) =>
+                {
+                    if (description.TryGetMethodInfo(out var methodInfo))
+                    {
+                        
+                        return methodInfo.CustomAttributes.Any(data =>
+                                   data.AttributeType == typeof(IncludeInOpenApiDocs)) ||
+                               methodInfo.DeclaringType.CustomAttributes.Any(data =>
+                                   data.AttributeType == typeof(IncludeInOpenApiDocs));
+                    }
+
+                    return false;
+                });
+                c.SwaggerDoc("v0.1", new Info { Title = "BtcPayServer Preview API", Version = "v0.1" });  
+                c.DescribeAllEnumsAsStrings();
+                // JWT-token authentication by password
+                c.AddSecurityDefinition("oauth2", new OAuth2Scheme
+                {
+                    Type = "oauth2",
+                    Flow = "password",
+                    TokenUrl = Path.Combine(Configuration.GetExternalUri()?.ToString()?? "http://127.0.0.1:14142/", "/connect/token"),
+                    // Optional scopes
+                    //Scopes = new Dictionary<string, string>
+                    //{
+                    //    { "api-name", "my api" },
+                    //}
+                });
+            }); 
 
             // If the HTTPS certificate path is not set this logic will NOT be used and the default Kestrel binding logic will be.
             string httpsCertificateFilePath = Configuration.GetOrDefault<string>("HttpsCertificateFilePath", null);
@@ -231,6 +265,18 @@ namespace BTCPayServer.Hosting
             });
             app.UseWebSockets();
             app.UseStatusCodePages();
+            
+            // Enable middleware to serve generated Swagger as a JSON endpoint.
+            app.UseSwagger();
+
+            // Enable middleware to serve swagger-ui (HTML, JS, CSS, etc.), 
+            // specifying the Swagger JSON endpoint.
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v0.1/swagger.json", "BtcPayServer Preview API 0.1");
+                
+            });
+            
             app.UseMvc(routes =>
             {
                 routes.MapRoute(

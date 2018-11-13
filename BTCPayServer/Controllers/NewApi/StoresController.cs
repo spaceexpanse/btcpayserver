@@ -17,6 +17,7 @@ namespace BTCPayServer.Controllers.NewApi
     [ApiController]
     [Route("api/v0.1/stores")]
     [Authorize()]
+    [IncludeInOpenApiDocs]
     public class StoresApiController : ControllerBase
     {
         private readonly UserManager<ApplicationUser> _userManager;

@@ -10,6 +10,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using AspNet.Security.OpenIdConnect.Extensions;
 using AspNet.Security.OpenIdConnect.Primitives;
+using BTCPayServer.Controllers.NewApi;
 using BTCPayServer.Filters;
 using BTCPayServer.Models;
 using Microsoft.AspNetCore.Authentication;
@@ -24,6 +25,7 @@ using OpenIddict.Server;
 
 namespace BTCPayServer.Controllers
 {
+    
     public class AuthorizationController : Controller
     {
         private readonly OpenIddictApplicationManager<OpenIddictApplication> _applicationManager;
@@ -47,6 +49,7 @@ namespace BTCPayServer.Controllers
         // Note: to support interactive flows like the code flow,
         // you must provide your own authorization endpoint action:
         [HttpGet("~/connect/authorize")]
+        [IncludeInOpenApiDocs]
         public async Task<IActionResult> Authorize(OpenIdConnectRequest request)
         {
             Debug.Assert(request.IsAuthorizationRequest(),
@@ -92,6 +95,7 @@ namespace BTCPayServer.Controllers
 
         [Authorize, FormValueRequired("submit.Accept")]
         [HttpPost("~/connect/authorize"), ValidateAntiForgeryToken]
+        [IncludeInOpenApiDocs]
         public async Task<IActionResult> Accept(OpenIdConnectRequest request)
         {
             Debug.Assert(request.IsAuthorizationRequest(),
@@ -129,6 +133,7 @@ namespace BTCPayServer.Controllers
         // flows like the authorization code flow or the implicit flow.
 
         [HttpGet("~/connect/logout")]
+        [IncludeInOpenApiDocs]
         public Task<IActionResult> Logout(OpenIdConnectRequest request)
         {
             // Flow the request_id to allow OpenIddict to restore
@@ -137,6 +142,7 @@ namespace BTCPayServer.Controllers
         }
 
         [HttpPost("~/connect/logout"), ValidateAntiForgeryToken]
+        [IncludeInOpenApiDocs]
         public async Task<IActionResult> Logout()
         {
             // Ask ASP.NET Core Identity to delete the local and external cookies created
@@ -156,6 +162,7 @@ namespace BTCPayServer.Controllers
 
 
         [HttpPost("~/connect/token"), Produces("application/json")]
+        [IncludeInOpenApiDocs]
         public async Task<IActionResult> Exchange(OpenIdConnectRequest request)
         {
             Debug.Assert(request.IsTokenRequest(),

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace BTCPayServer.Controllers.NewApi
 {
     [ApiController]
+    [IncludeInOpenApiDocs]
     [Route("api/v0.1/stores/{storeId}/[controller]")]
     [Authorize(Policy = Policies.CanModifyStoreSettings.Key)]
     [Authorize()]

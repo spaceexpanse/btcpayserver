@@ -14,6 +14,7 @@ using NBXplorer.DerivationStrategy;
 namespace BTCPayServer.Controllers.NewApi
 {
     [ApiController]
+    [IncludeInOpenApiDocs]
     [Route("api/v0.1/stores/{storeId}/PaymentMethods/" + nameof(PaymentTypes.BTCLike))]
     [Authorize(Policy = Policies.CanModifyStoreSettings.Key)]
     [Authorize()]
