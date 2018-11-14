@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
@@ -18,14 +17,14 @@ namespace BTCPayServer.Controllers.NewApi
     [Route("api/v0.1/stores/{storeId}/PaymentMethods/" + nameof(PaymentTypes.BTCLike))]
     [Authorize(Policy = Policies.CanModifyStoreSettings.Key)]
     [Authorize()]
-    public class BtcLikePaymentMethodController : ControllerBase
+    public class StoreBtcLikePaymentMethodController : ControllerBase
     {
         private StoreData Store => HttpContext.GetStoreData();
         private readonly BTCPayNetworkProvider _btcPayNetworkProvider;
         private readonly ExplorerClientProvider _explorerClientProvider;
         private readonly BTCPayWalletProvider _walletProvider;
 
-        public BtcLikePaymentMethodController(BTCPayNetworkProvider btcPayNetworkProvider,
+        public StoreBtcLikePaymentMethodController(BTCPayNetworkProvider btcPayNetworkProvider,
             ExplorerClientProvider explorerClientProvider, BTCPayWalletProvider walletProvider)
         {
             _btcPayNetworkProvider = btcPayNetworkProvider;
@@ -34,7 +33,7 @@ namespace BTCPayServer.Controllers.NewApi
         }
 
         [HttpGet("")]
-        public ActionResult<IEnumerable<BtcLikePaymentMethod>> GetBtcLikePaymentMethods(
+        public ActionResult<IEnumerable<StoreBtcLikePaymentMethod>> GetBtcLikePaymentMethods(
             [FromQuery] bool enabledOnly = false)
         {
             var excludedPaymentMethods = Store.GetStoreBlob().GetExcludedPaymentMethods();
@@ -42,14 +41,14 @@ namespace BTCPayServer.Controllers.NewApi
                 .Where((method) => method.PaymentId.PaymentType == PaymentTypes.BTCLike)
                 .OfType<DerivationStrategy>()
                 .Select(strategy =>
-                    new BtcLikePaymentMethod(strategy, !excludedPaymentMethods.Match(strategy.PaymentId)))
+                    new StoreBtcLikePaymentMethod(strategy, !excludedPaymentMethods.Match(strategy.PaymentId)))
                 .Where((result) => !enabledOnly || result.Enabled)
                 .ToList()
             );
         }
 
         [HttpGet("{cryptoCode}")]
-        public ActionResult<BtcLikePaymentMethod> GetBtcLikePaymentMethod(string cryptoCode)
+        public ActionResult<StoreBtcLikePaymentMethod> GetBtcLikePaymentMethod(string cryptoCode)
         {
             if (!GetCryptoCodeWallet(cryptoCode, out var network, out var wallet))
             {
@@ -60,7 +59,7 @@ namespace BTCPayServer.Controllers.NewApi
         }
 
         [HttpGet("{cryptoCode}/preview")]
-        public ActionResult<BtcLikePaymentMethodPreviewResult> GetBtcLikePaymentAddressPreview(string cryptoCode,
+        public ActionResult<StoreBtcLikePaymentMethodPreviewResult> GetBtcLikePaymentAddressPreview(string cryptoCode,
             int offset = 0, int amount = 10)
         {
             if (!GetCryptoCodeWallet(cryptoCode, out var network, out var wallet))
@@ -77,12 +76,12 @@ namespace BTCPayServer.Controllers.NewApi
             var strategy = ParseDerivationStrategy(cryptoCode, network);
 
             var line = strategy.DerivationStrategyBase.GetLineFor(DerivationFeature.Deposit);
-            var result = new BtcLikePaymentMethodPreviewResult();
+            var result = new StoreBtcLikePaymentMethodPreviewResult();
             for (var i = offset; i < amount; i++)
             {
                 var address = line.Derive((uint)i);
                 result.Addresses.Add(
-                    new BtcLikePaymentMethodPreviewResult.BtcLikePaymentMethodPreviewResultAddressItem()
+                    new StoreBtcLikePaymentMethodPreviewResult.StoreBtcLikePaymentMethodPreviewResultAddressItem()
                     {
                         KeyPath = DerivationStrategyBase.GetKeyPath(DerivationFeature.Deposit).Derive((uint)i)
                             .ToString(),
@@ -95,30 +94,24 @@ namespace BTCPayServer.Controllers.NewApi
         }
 
         [HttpPost("{cryptoCode}/preview")]
-        public ActionResult<BtcLikePaymentMethodPreviewResult> GetBtcLikePaymentAddressPreview(string cryptoCode,
-            [FromBody] BtcLikePaymentMethod paymentMethod,
+        public ActionResult<StoreBtcLikePaymentMethodPreviewResult> GetBtcLikePaymentAddressPreview(string cryptoCode,
+            [FromBody] StoreBtcLikePaymentMethod paymentMethod,
             int offset = 0, int amount = 10)
         {
             if (!GetCryptoCodeWallet(cryptoCode, out var network, out var wallet))
             {
                 return NotFound();
             }
-
-            if (string.IsNullOrEmpty(paymentMethod.DerivationScheme))
-            {
-                return BadRequest();
-            }
-
             try
             {
-                var strategy = ParseDerivationStrategy(cryptoCode, network);
+                var strategy = ParseDerivationStrategy(paymentMethod.DerivationScheme, network);
                 var line = strategy.DerivationStrategyBase.GetLineFor(DerivationFeature.Deposit);
-                var result = new BtcLikePaymentMethodPreviewResult();
+                var result = new StoreBtcLikePaymentMethodPreviewResult();
                 for (var i = offset; i < amount; i++)
                 {
                     var address = line.Derive((uint)i);
                     result.Addresses.Add(
-                        new BtcLikePaymentMethodPreviewResult.BtcLikePaymentMethodPreviewResultAddressItem()
+                        new StoreBtcLikePaymentMethodPreviewResult.StoreBtcLikePaymentMethodPreviewResultAddressItem()
                         {
                             KeyPath = DerivationStrategyBase.GetKeyPath(DerivationFeature.Deposit).Derive((uint)i)
                                 .ToString(),
@@ -132,14 +125,14 @@ namespace BTCPayServer.Controllers.NewApi
 
             catch
             {
-                ModelState.AddModelError(nameof(BtcLikePaymentMethod.DerivationScheme), "Invalid Derivation Scheme");
+                ModelState.AddModelError(nameof(StoreBtcLikePaymentMethod.DerivationScheme), "Invalid Derivation Scheme");
                 return BadRequest(ModelState);
             }
         }
 
         [HttpPut("{cryptoCode}")]
-        public async Task<ActionResult<BtcLikePaymentMethod>> UpdateBtcLikePaymentMethod(string cryptoCode,
-            [FromBody] BtcLikePaymentMethod paymentMethod)
+        public async Task<ActionResult<StoreBtcLikePaymentMethod>> UpdateBtcLikePaymentMethod(string cryptoCode,
+            [FromBody] StoreBtcLikePaymentMethod paymentMethod)
         {
             paymentMethod.CryptoCode = cryptoCode;
 
@@ -165,7 +158,7 @@ namespace BTCPayServer.Controllers.NewApi
             }
             catch
             {
-                ModelState.AddModelError(nameof(BtcLikePaymentMethod.DerivationScheme), "Invalid Derivation Scheme");
+                ModelState.AddModelError(nameof(StoreBtcLikePaymentMethod.DerivationScheme), "Invalid Derivation Scheme");
                 return BadRequest(ModelState);
             }
         }
@@ -173,7 +166,7 @@ namespace BTCPayServer.Controllers.NewApi
         private bool GetCryptoCodeWallet(string cryptoCode, out BTCPayNetwork network, out BTCPayWallet wallet)
         {
             network = _btcPayNetworkProvider.GetNetwork(cryptoCode);
-            wallet = network == null ? _walletProvider.GetWallet(network) : null;
+            wallet = network != null ? _walletProvider.GetWallet(network) : null;
             return wallet != null;
         }
 
@@ -183,7 +176,7 @@ namespace BTCPayServer.Controllers.NewApi
             return new DerivationStrategy(parser.Parse(derivationScheme), network);
         }
 
-        private BtcLikePaymentMethod GetExistingBtcLikePaymentMethod(string cryptoCode, StoreData store = null)
+        private StoreBtcLikePaymentMethod GetExistingBtcLikePaymentMethod(string cryptoCode, StoreData store = null)
         {
             store = store ?? Store;
             var storeBlob = store.GetStoreBlob();
@@ -195,40 +188,40 @@ namespace BTCPayServer.Controllers.NewApi
 
             var excluded = storeBlob.IsExcluded(paymentMethod.PaymentId);
             return paymentMethod == null
-                ? new BtcLikePaymentMethod(cryptoCode, !excluded)
-                : new BtcLikePaymentMethod(paymentMethod, !excluded);
+                ? new StoreBtcLikePaymentMethod(cryptoCode, !excluded)
+                : new StoreBtcLikePaymentMethod(paymentMethod, !excluded);
         }
     }
 
-    public class BtcLikePaymentMethodPreviewResult
+    public class StoreBtcLikePaymentMethodPreviewResult
     {
-        public IList<BtcLikePaymentMethodPreviewResultAddressItem> Addresses { get; set; } =
-            new List<BtcLikePaymentMethodPreviewResultAddressItem>();
+        public IList<StoreBtcLikePaymentMethodPreviewResultAddressItem> Addresses { get; set; } =
+            new List<StoreBtcLikePaymentMethodPreviewResultAddressItem>();
 
-        public class BtcLikePaymentMethodPreviewResultAddressItem
+        public class StoreBtcLikePaymentMethodPreviewResultAddressItem
         {
             public string KeyPath { get; set; }
             public string Address { get; set; }
         }
     }
 
-    public class BtcLikePaymentMethod
+    public class StoreBtcLikePaymentMethod
     {
         public bool Enabled { get; set; }
         public string CryptoCode { get; set; }
         [Required] public string DerivationScheme { get; set; }
 
-        public BtcLikePaymentMethod()
+        public StoreBtcLikePaymentMethod()
         {
         }
 
-        public BtcLikePaymentMethod(string cryptoCode, bool enabled)
+        public StoreBtcLikePaymentMethod(string cryptoCode, bool enabled)
         {
             CryptoCode = cryptoCode;
             Enabled = enabled;
         }
 
-        public BtcLikePaymentMethod(DerivationStrategy derivationStrategy, bool enabled)
+        public StoreBtcLikePaymentMethod(DerivationStrategy derivationStrategy, bool enabled)
         {
             Enabled = enabled;
             CryptoCode = derivationStrategy.PaymentId.CryptoCode;
