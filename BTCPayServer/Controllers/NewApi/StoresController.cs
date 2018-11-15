@@ -38,7 +38,7 @@ namespace BTCPayServer.Controllers.NewApi
 
         [HttpGet("{storeId}")]
         [Authorize(Policy = Policies.CanModifyStoreSettings.Key)]
-        public async Task<ActionResult<StoreModel>> GetStore(string storeId)
+        public ActionResult<StoreModel> GetStore(string storeId)
         {
             var store = HttpContext.GetStoreData();
             return Ok(new StoreModel(store, _storeRepository.CanDeleteStores()));

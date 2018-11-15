@@ -23,7 +23,6 @@ namespace BTCPayServer.Controllers.NewApi
         private StoreData Store => HttpContext.GetStoreData();
         private readonly StoreRepository _storeRepository;
         private readonly BTCPayNetworkProvider _btcPayNetworkProvider;
-        private readonly ExplorerClientProvider _explorerClientProvider;
         private readonly BTCPayWalletProvider _walletProvider;
 
         public StoreBtcLikePaymentMethodController(
@@ -34,7 +33,6 @@ namespace BTCPayServer.Controllers.NewApi
         {
             _storeRepository = storeRepository;
             _btcPayNetworkProvider = btcPayNetworkProvider;
-            _explorerClientProvider = explorerClientProvider;
             _walletProvider = walletProvider;
         }
 

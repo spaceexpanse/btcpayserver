@@ -25,6 +25,11 @@ namespace BTCPayServer
             }
         }
 
+        public BTCPayNetworkProvider()
+        {
+            
+        }
+        
         BTCPayNetworkProvider(BTCPayNetworkProvider filtered, string[] cryptoCodes)
         {
             NetworkType = filtered.NetworkType;
@@ -83,7 +88,7 @@ namespace BTCPayServer
             _Networks.Add(network.CryptoCode.ToUpperInvariant(), network);
         }
 
-        public IEnumerable<BTCPayNetwork> GetAll()
+        public virtual IEnumerable<BTCPayNetwork> GetAll()
         {
             return _Networks.Values.ToArray();
         }
