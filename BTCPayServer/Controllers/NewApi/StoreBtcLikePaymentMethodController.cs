@@ -84,7 +84,7 @@ namespace BTCPayServer.Controllers.NewApi
                 return BadRequest();
             }
 
-            var strategy = ParseDerivationStrategy(cryptoCode, network);
+            var strategy = ParseDerivationStrategy(paymentMethod.DerivationScheme, network);
 
             var line = strategy.DerivationStrategyBase.GetLineFor(DerivationFeature.Deposit);
             var result = new StoreBtcLikePaymentMethodPreviewResult();
