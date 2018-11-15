@@ -1,28 +1,24 @@
 version: 2
 jobs:
   build:
-    machine: 
+    machine:
       docker_layer_caching: true
     steps: 
       - checkout
   test:
-    machine: true
+    machine:
+      docker_layer_caching: true
     steps:
-      - checkout
+      - checkout  
       - run:
           command: |
             lsb_release -a
-            wget -q https://packages.microsoft.com/config/ubuntu/14.04/packages-microsoft-prod.deb
-            sudo dpkg -i packages-microsoft-prod.deb
-            sudo apt-get install apt-transport-https
-            sudo apt-get update
-            sudo apt-get install dotnet-sdk-2.1
-            dotnet --info
-            dotnet build /p:TreatWarningsAsErrors=true
-            cd BTCPayServer.Tests
-            dotnet test --filter Fast=Fast
-            docker-compose up -d dev
-            dotnet test --filter Integration=Integration
+            sudo apt update
+            sudo apt install -y qemu qemu-user-static qemu-user binfmt-support
+            sudo docker run --rm --privileged multiarch/qemu-user-static:register --reset
+      - run: 
+          shell: /bin/sh
+          command: sudo docker build --pull -t btcpayserverarm32 -f Dockerfile.bionic-arm32 .
 workflows:
   version: 2
   build_and_test:
