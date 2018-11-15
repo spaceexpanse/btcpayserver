@@ -1,14 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
 using System.Threading.Tasks;
 using BTCPayServer.Authentication;
-using BTCPayServer.Models;
-using BTCPayServer.Models.StoreViewModels;
 using BTCPayServer.Security;
 using BTCPayServer.Validation;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using NBitcoin;
 using NBitpayClient.Extensions;
@@ -23,15 +20,10 @@ namespace BTCPayServer.Controllers.NewApi
     public class StoreTokensController : ControllerBase
     {
         private readonly TokenRepository _tokenRepository;
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly AccessTokenController _accessTokenController;
 
-        public StoreTokensController(TokenRepository tokenRepository, 
-            UserManager<ApplicationUser> userManager, AccessTokenController accessTokenController)
+        public StoreTokensController(TokenRepository tokenRepository)
         {
             _tokenRepository = tokenRepository;
-            _userManager = userManager;
-            _accessTokenController = accessTokenController;
         }
 
         [HttpGet("")]
@@ -69,63 +61,61 @@ namespace BTCPayServer.Controllers.NewApi
 
             return Ok();
         }
-        
-        [HttpPost("")]
-        public async Task<ActionResult<BitTokenEntity>> CreateToken(string storeId, [FromBody]CreateTokenRequest request)
+
+        [HttpPost("pair/sin")]
+        public async Task<ActionResult<string>> CreateTokenBySIN(string storeId,
+            [FromBody] CreateTokenRequestBySIN request)
         {
-            var tokenRequest = new TokenRequest
+            var pairingCode = await _tokenRepository.CreatePairingCodeAsync();
+            var pairingCodeEntity = await _tokenRepository.UpdatePairingCode(new PairingCodeEntity
             {
+                Id = pairingCode,
                 Facade = request.Facade,
                 Label = request.Label,
-                Id = request.PublicKey == null
-                    ? null
-                    : BitIdExtensions.GetBitIDSIN(new PubKey(request.PublicKey))
-            };
-            
-            string pairingCode = null;
-            if (request.PublicKey == null)
+            });
+            var pairingResult = await _tokenRepository.PairWithStoreAsync(pairingCode, storeId);
+
+            switch (pairingResult)
             {
-                tokenRequest.PairingCode = await _tokenRepository.CreatePairingCodeAsync();
-                await _tokenRepository.UpdatePairingCode(new PairingCodeEntity
-                {
-                    Id = tokenRequest.PairingCode,
-                    Facade = request.Facade,
-                    Label = request.Label
-                });
-                var result = await _tokenRepository.PairWithStoreAsync(tokenRequest.PairingCode, storeId);
-                if (result == PairingResult.ReusedKey)
-                {
-                    ModelState.AddModelError(nameof(CreateTokenRequest.PublicKey), "Key was reused.");
-                    return BadRequest(ModelState);
-                }
-
-                return await GetToken(storeId, tokenRequest.PairingCode);
+                case PairingResult.Complete:
+                case PairingResult.Partial:
+                    return Ok(pairingCode);
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
+        }
 
-            pairingCode = (await _accessTokenController.Tokens(tokenRequest)).Data.First().PairingCode;
-            
-            return await GetToken(storeId, pairingCode);
-            
+        [HttpPost("pair")]
+        public async Task<ActionResult<BitTokenEntity>> CreateToken(string storeId,
+            [FromBody] CreateTokenRequest request)
+        {
+            var pairingCode = await _tokenRepository.CreatePairingCodeAsync();
+            await _tokenRepository.PairWithSINAsync(pairingCode, new PubKey(request.PublicKey).GetBitIDSIN());
+            var pairingCodeEntity = await _tokenRepository.UpdatePairingCode(new PairingCodeEntity()
+            {
+                Id = pairingCode,
+                Facade = request.Facade,
+                Label = request.Label
+            });
+
+
+            return await GetToken(storeId, pairingCodeEntity.TokenValue);
         }
     }
-
-    public class CreateTokenRequest
+    
+    public class CreateTokenRequest: CreateTokenRequestBySIN
     {
-        [PubKeyValidator]
-        public string PublicKey
-        {
-            get; set;
-        }
-
-        public string Label
-        {
-            get; set;
-        }
-
-        [Required]
-        public string Facade
-        {
-            get; set;
-        }
+        [PubKeyValidator] [Required] public string PublicKey { get; set; }
     }
+
+    public class CreateTokenRequestBySIN
+    {
+        public string Label { get; set; }
+
+        [StringRange(AllowableValues = new[] {"merchant", "pos"})]
+        [Required]
+        public string Facade { get; set; }
+    }
+
 }
+
