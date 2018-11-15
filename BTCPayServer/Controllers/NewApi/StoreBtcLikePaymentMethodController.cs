@@ -54,14 +54,19 @@ namespace BTCPayServer.Controllers.NewApi
         }
 
         [HttpGet("{cryptoCode}")]
-        public ActionResult<StoreBtcLikePaymentMethod> GetBtcLikePaymentMethod(string cryptoCode)
+        public ActionResult<StoreBtcLikePaymentMethodItem> GetBtcLikePaymentMethod(string cryptoCode)
         {
             if (!GetCryptoCodeWallet(cryptoCode, out var network, out var wallet))
             {
                 return NotFound();
             }
 
-            return Ok(GetExistingBtcLikePaymentMethod(cryptoCode));
+            var result = GetExistingBtcLikePaymentMethod(cryptoCode);
+            return Ok(new StoreBtcLikePaymentMethodItem()
+            {
+                Enabled = result.Enabled,
+                DerivationScheme = result.DerivationScheme
+            });
         }
 
         [HttpGet("{cryptoCode}/preview")]
@@ -140,10 +145,8 @@ namespace BTCPayServer.Controllers.NewApi
 
         [HttpPut("{cryptoCode}")]
         public async Task<ActionResult<StoreBtcLikePaymentMethod>> UpdateBtcLikePaymentMethod(string cryptoCode,
-            [FromBody] StoreBtcLikePaymentMethod paymentMethod)
+            [FromBody] StoreBtcLikePaymentMethodItem paymentMethod)
         {
-            paymentMethod.CryptoCode = cryptoCode;
-
             var id = new PaymentMethodId(cryptoCode, PaymentTypes.BTCLike);
 
             if (!GetCryptoCodeWallet(cryptoCode, out var network, out var wallet))
@@ -214,6 +217,12 @@ namespace BTCPayServer.Controllers.NewApi
         }
     }
 
+    public class StoreBtcLikePaymentMethodItem
+    {
+        public bool Enabled { get; set; }
+        [Required] public string DerivationScheme { get; set; }
+    }
+    
     public class StoreBtcLikePaymentMethod
     {
         public bool Enabled { get; set; }
