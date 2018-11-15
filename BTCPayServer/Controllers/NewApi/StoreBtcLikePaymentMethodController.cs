@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using BTCPayServer.Data;
 using BTCPayServer.Payments;
 using BTCPayServer.Security;
+using BTCPayServer.Services.Stores;
 using BTCPayServer.Services.Wallets;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,13 +21,18 @@ namespace BTCPayServer.Controllers.NewApi
     public class StoreBtcLikePaymentMethodController : ControllerBase
     {
         private StoreData Store => HttpContext.GetStoreData();
+        private readonly StoreRepository _storeRepository;
         private readonly BTCPayNetworkProvider _btcPayNetworkProvider;
         private readonly ExplorerClientProvider _explorerClientProvider;
         private readonly BTCPayWalletProvider _walletProvider;
 
-        public StoreBtcLikePaymentMethodController(BTCPayNetworkProvider btcPayNetworkProvider,
-            ExplorerClientProvider explorerClientProvider, BTCPayWalletProvider walletProvider)
+        public StoreBtcLikePaymentMethodController(
+            StoreRepository storeRepository,
+            BTCPayNetworkProvider btcPayNetworkProvider,
+            ExplorerClientProvider explorerClientProvider, 
+            BTCPayWalletProvider walletProvider)
         {
+            _storeRepository = storeRepository;
             _btcPayNetworkProvider = btcPayNetworkProvider;
             _explorerClientProvider = explorerClientProvider;
             _walletProvider = walletProvider;
@@ -102,6 +108,7 @@ namespace BTCPayServer.Controllers.NewApi
             {
                 return NotFound();
             }
+
             try
             {
                 var strategy = ParseDerivationStrategy(paymentMethod.DerivationScheme, network);
@@ -125,7 +132,8 @@ namespace BTCPayServer.Controllers.NewApi
 
             catch
             {
-                ModelState.AddModelError(nameof(StoreBtcLikePaymentMethod.DerivationScheme), "Invalid Derivation Scheme");
+                ModelState.AddModelError(nameof(StoreBtcLikePaymentMethod.DerivationScheme),
+                    "Invalid Derivation Scheme");
                 return BadRequest(ModelState);
             }
         }
@@ -151,14 +159,15 @@ namespace BTCPayServer.Controllers.NewApi
                 if (strategy != null)
                     await wallet.TrackAsync(strategy.DerivationStrategyBase);
                 store.SetSupportedPaymentMethod(id, strategy);
-                storeBlob.SetExcluded(id, paymentMethod.Enabled);
+                storeBlob.SetExcluded(id, !paymentMethod.Enabled);
                 store.SetStoreBlob(storeBlob);
-
+                await _storeRepository.UpdateStore(store);
                 return Ok(GetExistingBtcLikePaymentMethod(cryptoCode, store));
             }
             catch
             {
-                ModelState.AddModelError(nameof(StoreBtcLikePaymentMethod.DerivationScheme), "Invalid Derivation Scheme");
+                ModelState.AddModelError(nameof(StoreBtcLikePaymentMethod.DerivationScheme),
+                    "Invalid Derivation Scheme");
                 return BadRequest(ModelState);
             }
         }
