@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
+using BTCPayServer.Controllers.NewApi.Models;
 using BTCPayServer.Data;
 using BTCPayServer.Payments;
 using BTCPayServer.Security;
@@ -200,48 +200,6 @@ namespace BTCPayServer.Controllers.NewApi
             return paymentMethod == null
                 ? new StoreBtcLikePaymentMethod(cryptoCode, !excluded)
                 : new StoreBtcLikePaymentMethod(paymentMethod, !excluded);
-        }
-    }
-
-    public class StoreBtcLikePaymentMethodPreviewResult
-    {
-        public IList<StoreBtcLikePaymentMethodPreviewResultAddressItem> Addresses { get; set; } =
-            new List<StoreBtcLikePaymentMethodPreviewResultAddressItem>();
-
-        public class StoreBtcLikePaymentMethodPreviewResultAddressItem
-        {
-            public string KeyPath { get; set; }
-            public string Address { get; set; }
-        }
-    }
-
-    public class StoreBtcLikePaymentMethodItem
-    {
-        public bool Enabled { get; set; }
-        [Required] public string DerivationScheme { get; set; }
-    }
-    
-    public class StoreBtcLikePaymentMethod
-    {
-        public bool Enabled { get; set; }
-        public string CryptoCode { get; set; }
-        [Required] public string DerivationScheme { get; set; }
-
-        public StoreBtcLikePaymentMethod()
-        {
-        }
-
-        public StoreBtcLikePaymentMethod(string cryptoCode, bool enabled)
-        {
-            CryptoCode = cryptoCode;
-            Enabled = enabled;
-        }
-
-        public StoreBtcLikePaymentMethod(DerivationStrategy derivationStrategy, bool enabled)
-        {
-            Enabled = enabled;
-            CryptoCode = derivationStrategy.PaymentId.CryptoCode;
-            DerivationScheme = derivationStrategy.DerivationStrategyBase.ToString();
         }
     }
 }

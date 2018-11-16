@@ -20,9 +20,4 @@ namespace BTCPayServer.Controllers.NewApi
             });
         }
     }
-
-    public class BtcLikePaymentMethod
-    {
-        public string CryptoCode { get; set; }
-    }
 }

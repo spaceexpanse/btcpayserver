@@ -10,7 +10,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using AspNet.Security.OpenIdConnect.Extensions;
 using AspNet.Security.OpenIdConnect.Primitives;
-using BTCPayServer.Controllers.NewApi;
 using BTCPayServer.Filters;
 using BTCPayServer.Models;
 using Microsoft.AspNetCore.Authentication;
@@ -23,7 +22,7 @@ using OpenIddict.Core;
 using OpenIddict.EntityFrameworkCore.Models;
 using OpenIddict.Server;
 
-namespace BTCPayServer.Controllers
+namespace BTCPayServer.Controllers.NewApi
 {
     
     public class AuthorizationController : Controller

@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 using BTCPayServer.Authentication;
+using BTCPayServer.Controllers.NewApi.Models;
 using BTCPayServer.Security;
-using BTCPayServer.Validation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NBitcoin;
@@ -102,20 +101,5 @@ namespace BTCPayServer.Controllers.NewApi
             return await GetToken(storeId, pairingCodeEntity.TokenValue);
         }
     }
-    
-    public class CreateTokenRequest: CreateTokenRequestBySIN
-    {
-        [PubKeyValidator] [Required] public string PublicKey { get; set; }
-    }
-
-    public class CreateTokenRequestBySIN
-    {
-        public string Label { get; set; }
-
-        [StringRange(AllowableValues = new[] {"merchant", "pos"})]
-        [Required]
-        public string Facade { get; set; }
-    }
-
 }
 
