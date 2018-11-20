@@ -17,7 +17,6 @@ jobs:
             sudo apt install -y qemu qemu-user-static qemu-user binfmt-support
             sudo docker run --rm --privileged multiarch/qemu-user-static:register --reset
       - run: 
-          shell: /bin/sh
           command: |
             LATEST_TAG=$(git describe --abbrev=0 --tags)
             LATEST_TAG=${LATEST_TAG:1} #trim v from tag
