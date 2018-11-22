@@ -48,7 +48,6 @@ jobs:
       - run:
           command: |
             sudo docker version
-            sudo cat /home/.docker/config.json
             # Restart Docker with experimental features on.
             sudo sh -c 'echo "{ \"experimental\": true }" >> /etc/docker/daemon.json'
             sudo sh -c 'echo "{ \"experimental\": \"enabled\" }" >> /home/.docker/config.json'
