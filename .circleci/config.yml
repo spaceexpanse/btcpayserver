@@ -4,7 +4,7 @@ jobs:
     machine:
       docker_layer_caching: true
     steps: 
-      - checkout
+      - run: echo "Workflow checks tag"
 
   publish_check:
     machine:
@@ -74,7 +74,7 @@ workflows:
       - publish_check:
           filters:
             tags:
-              only: /.*/
+              only: /v.*/
       - publish_docker_linuxamd64:
           requires:
             - publish_check
