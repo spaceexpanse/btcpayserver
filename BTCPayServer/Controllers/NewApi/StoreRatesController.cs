@@ -16,8 +16,6 @@ namespace BTCPayServer.Controllers.NewApi
     [ApiController]
     [IncludeInOpenApiDocs]
     [Route("api/v0.1/stores/{storeId}/rates")]
-    [Authorize(Policy = Policies.CanModifyStoreSettings.Key)]
-    [Authorize()]
     public class StoreRatesController : ControllerBase
     {
         private readonly BTCPayNetworkProvider _btcPayNetworkProvider;
