@@ -41,7 +41,7 @@ jobs:
 
   publish_docker_multiarch:
     docker:
-      image: docker:18.09.0
+      - image: docker:18.09.0
     steps:
       - run:
           command: |
