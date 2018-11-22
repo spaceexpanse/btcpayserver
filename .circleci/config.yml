@@ -45,7 +45,7 @@ jobs:
     steps:
       - run:
           command: |
-             # Restart Docker with experimental features on.
+            # Restart Docker with experimental features on.
             sudo sh -c 'echo '\''DOCKER_OPTS="--experimental=true"'\'' >> /etc/default/docker'
             sudo service docker restart
             |
