@@ -48,11 +48,6 @@ jobs:
       - run:
           command: |
             sudo docker version
-            # Restart Docker with experimental features on.
-            sudo sh -c 'echo "{ \"experimental\": true }" >> /etc/docker/daemon.json'
-            sudo sh -c 'echo "{ \"experimental\": \"enabled\" }" >> /home/.docker/config.json'
-            sudo service docker restart
-            sudo cat /home/.docker/config.json
             #
             # Login and push Docker image to registry.
             sudo docker login --username=$DOCKERHUB_USER --password=$DOCKERHUB_PASS
