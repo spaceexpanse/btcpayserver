@@ -72,9 +72,7 @@ workflows:
   build_and_test:
     jobs:
       - publish_check:
-          filters:
-            tags:
-              only: /v.*/
+          type: approval
       - publish_docker_linuxamd64:
           requires:
             - publish_check
