@@ -48,6 +48,8 @@ jobs:
       - run:
           command: |
             sudo docker --version
+            sudo apt-get upgrade docker-ce            
+            sudo docker --version
             # Restart Docker with experimental features on.
             sudo sh -c 'echo '\''DOCKER_OPTS="--experimental=true"'\'' >> /etc/default/docker'
             sudo service docker restart
