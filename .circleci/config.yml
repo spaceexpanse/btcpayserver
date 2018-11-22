@@ -64,7 +64,7 @@ workflows:
     jobs:
       - publish_docker_linuxamd64
       - publish_docker_linuxarm
-      - publish_docker_multiarch
+      - publish_docker_multiarch:
           requires:
             - publish_docker_linuxamd64
             - publish_docker_linuxarm
