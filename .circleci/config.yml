@@ -49,7 +49,7 @@ jobs:
           command: |
             sudo docker --version
             # Restart Docker with experimental features on.
-            sudo sh -c 'echo '\''DOCKER_OPTS="--experimental=true"'\'' >> /etc/default/docker'
+            sudo echo '{ "experimental": true }' >> /etc/docker/daemon.json
             sudo service docker restart
             #
             # Login and push Docker image to registry.
