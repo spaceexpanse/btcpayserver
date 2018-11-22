@@ -43,12 +43,10 @@ jobs:
     machine:
       enabled: true
       # Use Ubuntu 14.04 with bleeding edge Docker daemon 17.06.0-ce.
-      image: circleci/classic:edge
+      image: circleci/classic:201808-01
     steps:
       - run:
           command: |
-            sudo docker --version
-            sudo apt-get upgrade docker-ce            
             sudo docker --version
             # Restart Docker with experimental features on.
             sudo sh -c 'echo '\''DOCKER_OPTS="--experimental=true"'\'' >> /etc/default/docker'
@@ -67,9 +65,4 @@ workflows:
   version: 2
   build_and_test:
     jobs:
-      - publish_docker_linuxamd64
-      - publish_docker_linuxarm
-      - publish_docker_multiarch:
-          requires:
-            - publish_docker_linuxamd64
-            - publish_docker_linuxarm
+      - publish_docker_multiarch
