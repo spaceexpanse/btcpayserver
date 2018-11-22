@@ -66,6 +66,7 @@ jobs:
             sudo docker manifest annotate rockstardev/btcpayserver:latest rockstardev/btcpayserver:latest-amd64 --os linux --arch amd64
             sudo docker manifest annotate rockstardev/btcpayserver:latest rockstardev/btcpayserver:latest-arm32v7 --os linux --arch arm
             sudo docker manifest push rockstardev/btcpayserver:latest -p
+            #new comment
 
 workflows:
   version: 2
