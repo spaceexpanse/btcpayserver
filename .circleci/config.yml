@@ -15,7 +15,7 @@ jobs:
           command: |
             LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
             LATEST_TAG=${LATEST_TAG:1} #trim v from tag
-            |
+            #
             sudo docker build --pull -t rockstardev/btcpayserver:$LATEST_TAG-amd64 -t rockstardev/btcpayserver:latest-amd64 -f Dockerfile.linuxamd64 .
             sudo docker login --username=$DOCKERHUB_USER --password=$DOCKERHUB_PASS
             sudo docker push rockstardev/btcpayserver:$LATEST_TAG-amd64
@@ -33,7 +33,7 @@ jobs:
             sudo docker run --rm --privileged multiarch/qemu-user-static:register --reset
             LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
             LATEST_TAG=${LATEST_TAG:1} #trim v from tag
-            |
+            #
             sudo docker build --pull -t rockstardev/btcpayserver:$LATEST_TAG-arm -t rockstardev/btcpayserver:latest-arm -f Dockerfile.linuxarm .
             sudo docker login --username=$DOCKERHUB_USER --password=$DOCKERHUB_PASS
             sudo docker push rockstardev/btcpayserver:$LATEST_TAG-arm
@@ -48,7 +48,7 @@ jobs:
             # Restart Docker with experimental features on.
             sudo sh -c 'echo '\''DOCKER_OPTS="--experimental=true"'\'' >> /etc/default/docker'
             sudo service docker restart
-            |
+            #
             # Login and push Docker image to registry.
             sudo docker login --username=$DOCKERHUB_USER --password=$DOCKERHUB_PASS
             docker manifest create rockstardev/btcpayserver:latest 
