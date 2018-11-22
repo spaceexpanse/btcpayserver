@@ -80,7 +80,7 @@ workflows:
       - publish_docker_linuxamd64:
           requires:
             - publish_check
-      - publish_docker_linuxarm
+      - publish_docker_linuxarm:
           requires:
             - publish_check
       - publish_docker_multiarch:
