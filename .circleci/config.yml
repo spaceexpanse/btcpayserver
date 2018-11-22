@@ -49,7 +49,7 @@ jobs:
           command: |
             sudo docker --version
             # Restart Docker with experimental features on.
-            sudo sh -c 'echo ''{ "experimental": true }'' >> /etc/docker/daemon.json'
+            sudo sh -c 'echo "{ \"experimental\": true }" >> /etc/docker/daemon.json'
             sudo service docker restart
             #
             # Login and push Docker image to registry.
