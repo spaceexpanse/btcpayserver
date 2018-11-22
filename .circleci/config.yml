@@ -75,8 +75,6 @@ workflows:
           filters:
             tags:
               only: /.*/
-            branches:
-              only: master
       - publish_docker_linuxamd64:
           requires:
             - publish_check
