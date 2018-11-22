@@ -41,12 +41,12 @@ jobs:
 
   publish_docker_multiarch:
     machine:
-      docker_layer_caching: true
+      enabled: true
+      # Use Ubuntu 14.04 with bleeding edge Docker daemon 17.06.0-ce.
+      image: circleci/classic:edge
     steps:
       - run:
           command: |
-            sudo apt-get update
-            sudo apt-get upgrade docker
             sudo docker --version
             # Restart Docker with experimental features on.
             sudo sh -c 'echo '\''DOCKER_OPTS="--experimental=true"'\'' >> /etc/default/docker'
