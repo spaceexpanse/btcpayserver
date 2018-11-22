@@ -6,12 +6,6 @@ jobs:
     steps: 
       - checkout
 
-  publish_check:
-    machine:
-      docker_layer_caching: true
-    steps: 
-      - run: echo "Workflow checks tag"
-
   publish_docker_linuxamd64:
     machine:
       docker_layer_caching: true
@@ -72,14 +66,6 @@ workflows:
   version: 2
   build_and_test:
     jobs:
-      - publish_check:
-          filters:
-            # ignore any commit on any branch by default
-            branches:
-              ignore: /.*/
-            # only act on version tags
-            tags:
-              only: /v[1-9]+(\.[0-9]+)*/
       - publish_docker_linuxamd64:
           requires:
             - publish_check
@@ -90,3 +76,10 @@ workflows:
           requires:
             - publish_docker_linuxamd64
             - publish_docker_linuxarm
+          filters:
+            # ignore any commit on any branch by default
+            branches:
+              ignore: /.*/
+            # only act on version tags
+            tags:
+              only: /v[1-9]+(\.[0-9]+)*/
