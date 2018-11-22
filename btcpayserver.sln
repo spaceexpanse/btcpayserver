@@ -10,9 +10,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionFiles", "SolutionFiles", "{E90126C2-52EB-460B-A01D-5A876B28F259}"
 	ProjectSection(SolutionItems) = preProject
 		.circleci\config.yml = .circleci\config.yml
-		docker-compose-arm32.yml = docker-compose-arm32.yml
 		Dockerfile.linuxamd64 = Dockerfile.linuxamd64
-		Dockerfile.linuxarm = Dockerfile.linuxarm
+		Dockerfile.linuxarm32v7 = Dockerfile.linuxarm32v7
 	EndProjectSection
 EndProject
 Global
