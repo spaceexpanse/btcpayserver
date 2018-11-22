@@ -41,6 +41,7 @@ jobs:
 
   publish_docker_multiarch:
     machine:
+      image: circleci/classic:edge
       docker_layer_caching: true
     steps:
       - run:
