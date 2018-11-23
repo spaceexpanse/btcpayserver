@@ -2,6 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
+using BTCPayServer.Controllers.NewApi.Models;
 using BTCPayServer.Rating;
 using BTCPayServer.Services.Rates;
 using Microsoft.AspNetCore.Mvc;

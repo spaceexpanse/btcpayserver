@@ -1,4 +1,5 @@
-﻿using BTCPayServer.Validation;
+﻿using System.ComponentModel.DataAnnotations;
+using BTCPayServer.Validation;
 
 namespace BTCPayServer.Controllers.NewApi.Models
 {

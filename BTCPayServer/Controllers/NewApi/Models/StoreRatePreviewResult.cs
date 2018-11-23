@@ -1,4 +1,6 @@
-﻿namespace BTCPayServer.Controllers.NewApi.Models
+﻿using System.Collections.Generic;
+
+namespace BTCPayServer.Controllers.NewApi.Models
 {
     public class StoreRatePreviewResult : StoreRateResult
     {
