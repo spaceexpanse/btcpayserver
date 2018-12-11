@@ -31,7 +31,7 @@ namespace BTCPayServer.Controllers
     {
         [HttpGet]
         [Route("invoices/{invoiceId}")]
-        [Authorize(AuthenticationSchemes = Policies.CookieAuthentication)]
+        [Authorize()]
         public async Task<IActionResult> Invoice(string invoiceId)
         {
             var invoice = (await _InvoiceRepository.GetInvoices(new InvoiceQuery()
@@ -480,7 +480,7 @@ namespace BTCPayServer.Controllers
         }
 
         [HttpGet]
-        [Authorize(AuthenticationSchemes = Policies.CookieAuthentication)]
+        [Authorize()]
         [BitpayAPIConstraint(false)]
         public async Task<IActionResult> Export(string format, string searchTerm = null)
         {
@@ -503,7 +503,7 @@ namespace BTCPayServer.Controllers
 
         [HttpGet]
         [Route("invoices/create")]
-        [Authorize(AuthenticationSchemes = Policies.CookieAuthentication)]
+        [Authorize()]
         [BitpayAPIConstraint(false)]
         public async Task<IActionResult> CreateInvoice()
         {
@@ -518,7 +518,7 @@ namespace BTCPayServer.Controllers
 
         [HttpPost]
         [Route("invoices/create")]
-        [Authorize(AuthenticationSchemes = Policies.CookieAuthentication)]
+        [Authorize()]
         [BitpayAPIConstraint(false)]
         public async Task<IActionResult> CreateInvoice(CreateInvoiceModel model)
         {
@@ -581,7 +581,7 @@ namespace BTCPayServer.Controllers
         }
 
         [HttpPost]
-        [Authorize(AuthenticationSchemes = Policies.CookieAuthentication)]
+        [Authorize()]
         [BitpayAPIConstraint(false)]
         public IActionResult SearchInvoice(InvoicesModel invoices)
         {
@@ -595,7 +595,7 @@ namespace BTCPayServer.Controllers
 
         [HttpGet]
         [Route("invoices/{invoiceId}/changestate/{newState}")]
-        [Authorize(AuthenticationSchemes = Policies.CookieAuthentication)]
+        [Authorize()]
         [BitpayAPIConstraint(false)]
         public IActionResult ChangeInvoiceState(string invoiceId, string newState)
         {
@@ -624,7 +624,7 @@ namespace BTCPayServer.Controllers
 
         [HttpPost]
         [Route("invoices/{invoiceId}/changestate/{newState}")]
-        [Authorize(AuthenticationSchemes = Policies.CookieAuthentication)]
+        [Authorize()]
         [BitpayAPIConstraint(false)]
         public async Task<IActionResult> ChangeInvoiceStateConfirm(string invoiceId, string newState)
         {
