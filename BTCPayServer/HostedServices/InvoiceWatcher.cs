@@ -15,9 +15,13 @@ using Hangfire;
 using BTCPayServer.Services.Wallets;
 using BTCPayServer.Controllers;
 using BTCPayServer.Events;
+using BTCPayServer.Payments;
+using BTCPayServer.Payments.Lightning;
 using Microsoft.AspNetCore.Hosting;
 using BTCPayServer.Services.Invoices;
 using BTCPayServer.Services;
+using Microsoft.EntityFrameworkCore.Internal;
+using NBitcoin.Altcoins;
 
 namespace BTCPayServer.HostedServices
 {
@@ -268,8 +272,49 @@ namespace BTCPayServer.HostedServices
             _WaitingInvoices = null;
         }
 
+        private async Task RemoveBadData()
+        {
+            var invoices = await _InvoiceRepository.GetInvoices(new InvoiceQuery());
+            var updatedPayments = new List<PaymentEntity>();
+            foreach (var invoiceEntity in invoices)
+            {
+                var fixedInvoice = false;
+                var payments = invoiceEntity
+                    .GetPayments()
+                    .Where(entity => entity.GetPaymentMethodId()
+                                         .PaymentType == PaymentTypes.LightningLike
+                                     &&
+                                     entity.GetPaymentMethodId()
+                                         .CryptoCode == Groestlcoin.Instance.CryptoCode
+                    );
+                if (!payments.Any())
+                {
+                    continue;
+                }
+
+                foreach (var paymentEntity in payments)
+                {
+                    var data = paymentEntity.GetCryptoPaymentData() as LightningLikePaymentData;
+                    if (data == null || data.Amount != null)
+                    {
+                        continue;
+                    }
+
+                    data.Amount = 0;
+                    paymentEntity.SetCryptoPaymentData(data);
+                    updatedPayments.Add(paymentEntity);
+                }
+            }
+
+            Logs.PayServer.LogInformation($"Fixing  {updatedPayments.Count} payments");
+            await _InvoiceRepository.UpdatePayments(updatedPayments);
+
+        }
+
         async Task StartLoop(CancellationToken cancellation)
         {
+
+            await RemoveBadData();
             Logs.PayServer.LogInformation("Start watching invoices");
             await Task.Delay(1).ConfigureAwait(false); // Small hack so that the caller does not block on GetConsumingEnumerable
             try
