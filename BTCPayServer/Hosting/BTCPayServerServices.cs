@@ -41,6 +41,7 @@ using BTCPayServer.HostedServices;
 using Meziantou.AspNetCore.BundleTagHelpers;
 using System.Security.Claims;
 using BTCPayServer.Payments.Changelly;
+using BTCPayServer.Payments.Lightning;
 using BTCPayServer.Security;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -148,9 +149,8 @@ namespace BTCPayServer.Hosting
 
             services.AddSingleton<IHostedService, HostedServices.CheckConfigurationHostedService>();
 
-            services
-                .AddSingleton<Payments.IPaymentMethodHandler<Payments.Lightning.LightningSupportedPaymentMethod>,
-                    Payments.Lightning.LightningLikePaymentHandler>();
+            services.AddSingleton<Payments.IPaymentMethodHandler<Payments.Lightning.LightningSupportedPaymentMethod>, Payments.Lightning.LightningLikePaymentHandler>();
+            services.AddSingleton<LightningLikePaymentHandler>();
             services.AddSingleton<IHostedService, Payments.Lightning.LightningListener>();
             
             services.AddSingleton<ChangellyClientProvider>();
