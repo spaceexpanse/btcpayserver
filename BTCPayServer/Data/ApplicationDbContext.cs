@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using BTCPayServer.Models;
 using Microsoft.EntityFrameworkCore.Infrastructure.Internal;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using U2F.Demo.Models;
 
 namespace BTCPayServer.Data
 {
@@ -90,7 +91,11 @@ namespace BTCPayServer.Data
         {
             get; set;
         }
+        
+        public DbSet<Device> Devices { get; set; }
 
+        public DbSet<AuthenticationRequest> AuthenticationRequests { get; set; }   
+        
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             var isConfigured = optionsBuilder.Options.Extensions.OfType<RelationalOptionsExtension>().Any();

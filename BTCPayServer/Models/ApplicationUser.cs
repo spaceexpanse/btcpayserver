@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using BTCPayServer.Data;
+using U2F.Demo.Models;
 
 namespace BTCPayServer.Models
 {
@@ -20,5 +21,9 @@ namespace BTCPayServer.Models
         {
             get; set;
         }
+        
+        public virtual List<Device> DeviceRegistrations { get; set; }
+
+        public virtual List<AuthenticationRequest> AuthenticationRequest { get; set; }
     }
 }
