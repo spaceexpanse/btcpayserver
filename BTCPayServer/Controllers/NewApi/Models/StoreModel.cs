@@ -36,7 +36,7 @@ namespace BTCPayServer.Controllers.NewApi.Models
             Id = storeData.Id;
             StoreName = storeData.StoreName;
             StoreWebsite = storeData.StoreWebsite;
-            NetworkFee = !storeBlob.NetworkFeeDisabled;
+            NetworkFee = storeBlob.NetworkFeeDisabled?? false;
             AnyoneCanCreateInvoice = storeBlob.AnyoneCanInvoice;
             SpeedPolicy = storeData.SpeedPolicy;
             CanDelete = canDelete;
