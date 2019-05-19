@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BTCPayServer.Data;
+using BTCPayServer.Models;
 using BTCPayServer.Services;
 using BTCPayServer.Services.Invoices;
 using BTCPayServer.Services.Rates;
 using NBitcoin;
+using NBitpayClient;
 
 namespace BTCPayServer.Payments.Bitcoin
 {
@@ -63,5 +65,50 @@ namespace BTCPayServer.Payments.Bitcoin
             onchainMethod.DepositAddress = (await prepare.ReserveAddress).ToString();
             return onchainMethod;
         }
+
+        public override bool CanHandle(PaymentMethodId paymentMethodId)
+        {
+            return paymentMethodId.PaymentType == PaymentTypes.BTCLike;
+        }
+
+        
+        public override Task<string> ToString(PaymentMethodId paymentMethodId)
+        {
+            return Task.FromResult($"{paymentMethodId.CryptoCode} (On-Chain)");
+        }
+        
+        public override Task PrepareInvoiceDto(InvoiceResponse invoiceResponse, InvoiceEntity invoiceEntity,
+            InvoiceCryptoInfo invoiceCryptoInfo,
+            PaymentMethodAccounting accounting, PaymentMethod info)
+        {
+            
+                
+            var scheme = info.Network.UriScheme;
+            
+                var minerInfo = new MinerFeeInfo();
+                minerInfo.TotalFee = accounting.NetworkFee.Satoshi;
+                minerInfo.SatoshiPerBytes = ((BitcoinLikeOnChainPaymentMethod)info.GetPaymentMethodDetails()).FeeRate.GetFee(1).Satoshi;
+                invoiceResponse.MinerFees.TryAdd(invoiceCryptoInfo.CryptoCode, minerInfo);
+                invoiceCryptoInfo.PaymentUrls = new NBitpayClient.InvoicePaymentUrls()
+                {
+                    BIP21 = $"{scheme}:{invoiceCryptoInfo.Address}?amount={invoiceCryptoInfo.Due}",
+                };
+
+#pragma warning disable 618
+                if (info.CryptoCode == "BTC")
+
+                {
+                    invoiceResponse.BTCPrice = invoiceCryptoInfo.Price;
+                    invoiceResponse.Rate = invoiceCryptoInfo.Rate;
+                    invoiceResponse.ExRates = invoiceCryptoInfo.ExRates;
+                    invoiceResponse.BitcoinAddress = invoiceCryptoInfo.Address;
+                    invoiceResponse.BTCPaid = invoiceCryptoInfo.Paid;
+                    invoiceResponse.BTCDue = invoiceCryptoInfo.Due;
+                    invoiceResponse.PaymentUrls = invoiceCryptoInfo.PaymentUrls;
+                }
+#pragma warning restore 618
+                return Task.CompletedTask;
+        }
+        
     }
 }

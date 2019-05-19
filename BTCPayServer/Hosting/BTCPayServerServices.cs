@@ -38,6 +38,7 @@ using BTCPayServer.Logging;
 using BTCPayServer.HostedServices;
 using System.Security.Claims;
 using BTCPayServer.PaymentRequest;
+using BTCPayServer.Payments;
 using BTCPayServer.Payments.Changelly;
 using BTCPayServer.Payments.Lightning;
 using BTCPayServer.Security;
@@ -178,12 +179,17 @@ namespace BTCPayServer.Hosting
             services.AddSingleton<IHostedService, MigratorHostedService>();
 
             services.AddSingleton<Payments.IPaymentMethodHandler<DerivationSchemeSettings>, Payments.Bitcoin.BitcoinLikePaymentHandler>();
+            services.AddSingleton<IPaymentMethodHandler>(provider =>
+                provider.GetService<Payments.IPaymentMethodHandler<DerivationSchemeSettings>>());
             services.AddSingleton<IHostedService, Payments.Bitcoin.NBXplorerListener>();
 
             services.AddSingleton<IHostedService, HostedServices.CheckConfigurationHostedService>();
 
             services.AddSingleton<Payments.IPaymentMethodHandler<Payments.Lightning.LightningSupportedPaymentMethod>, Payments.Lightning.LightningLikePaymentHandler>();
-            services.AddSingleton<LightningLikePaymentHandler>();
+            services.AddSingleton<IPaymentMethodHandler>(provider =>
+                provider.GetService<Payments.IPaymentMethodHandler<LightningSupportedPaymentMethod>>()); 
+            services.AddSingleton<LightningLikePaymentHandler>(provider =>
+                (LightningLikePaymentHandler) provider.GetService<Payments.IPaymentMethodHandler<LightningSupportedPaymentMethod>>());
             services.AddSingleton<IHostedService, Payments.Lightning.LightningListener>();
             
             services.AddSingleton<ChangellyClientProvider>();

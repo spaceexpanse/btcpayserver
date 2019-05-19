@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using BTCPayServer.Models;
 using Newtonsoft.Json.Linq;
 using NBitcoin.DataEncoders;
@@ -362,7 +363,7 @@ namespace BTCPayServer.Services.Invoices
             return DateTimeOffset.UtcNow > ExpirationTime;
         }
 
-        public InvoiceResponse EntityToDTO(BTCPayNetworkProvider networkProvider)
+        public async Task<InvoiceResponse> EntityToDTO(BTCPayNetworkProvider networkProvider, IEnumerable<IPaymentMethodHandler> paymentMethodHandlers)
         {
             ServerUrl = ServerUrl ?? "";
             InvoiceResponse dto = new InvoiceResponse
@@ -419,7 +420,6 @@ namespace BTCPayServer.Services.Invoices
 
                 cryptoInfo.ExRates = exrates;
                 var paymentId = info.GetId();
-                var scheme = info.Network.UriScheme;
                 cryptoInfo.Url = ServerUrl.WithTrailingSlash() + $"i/{paymentId}/{Id}";
 
                 cryptoInfo.Payments = GetPayments(info.Network).Select(entity =>
@@ -437,40 +437,11 @@ namespace BTCPayServer.Services.Invoices
                         ReceivedDate = entity.ReceivedTime.DateTime
                     };
                 }).ToList();
-                
-                if (paymentId.PaymentType == PaymentTypes.BTCLike)
-                {
-                    var minerInfo = new MinerFeeInfo();
-                    minerInfo.TotalFee = accounting.NetworkFee.Satoshi;
-                    minerInfo.SatoshiPerBytes = ((BitcoinLikeOnChainPaymentMethod)info.GetPaymentMethodDetails()).FeeRate.GetFee(1).Satoshi;
-                    dto.MinerFees.TryAdd(paymentId.CryptoCode, minerInfo);
-                    var cryptoSuffix = cryptoInfo.CryptoCode == "BTC" ? "" : "/" + cryptoInfo.CryptoCode;
-                    cryptoInfo.PaymentUrls = new NBitpayClient.InvoicePaymentUrls()
-                    {
-                        BIP21 = $"{scheme}:{cryptoInfo.Address}?amount={cryptoInfo.Due}",
-                    };
-                }
-//Todo: Abstract
-                if (paymentId.PaymentType == PaymentTypes.LightningLike)
-                {
-                    cryptoInfo.PaymentUrls = new NBitpayClient.InvoicePaymentUrls()
-                    {
-                        BOLT11 = $"lightning:{cryptoInfo.Address}"
-                    };
-                }
-#pragma warning disable CS0618
-                if (info.CryptoCode == "BTC" && paymentId.PaymentType == PaymentTypes.BTCLike)
-                {
-                    dto.BTCPrice = cryptoInfo.Price;
-                    dto.Rate = cryptoInfo.Rate;
-                    dto.ExRates = cryptoInfo.ExRates;
-                    dto.BitcoinAddress = cryptoInfo.Address;
-                    dto.BTCPaid = cryptoInfo.Paid;
-                    dto.BTCDue = cryptoInfo.Due;
-                    dto.PaymentUrls = cryptoInfo.PaymentUrls;
-                }
 
-#pragma warning restore CS0618
+                var paymentHandler =  paymentMethodHandlers.First(handler => handler.CanHandle(paymentId));
+
+                await paymentHandler.PrepareInvoiceDto(dto, this, cryptoInfo, accounting, info);
+                
                 dto.CryptoInfo.Add(cryptoInfo);
                 dto.PaymentCodes.Add(paymentId.ToString(), cryptoInfo.PaymentUrls);
                 dto.PaymentSubtotals.Add(paymentId.ToString(), subtotalPrice.Satoshi);
@@ -1006,7 +977,9 @@ namespace BTCPayServer.Services.Invoices
 #pragma warning restore CS0618
         }
     }
-
+    /// <summary>
+    /// A record of a payment
+    /// </summary>
     public interface CryptoPaymentData
     {
         /// <summary>

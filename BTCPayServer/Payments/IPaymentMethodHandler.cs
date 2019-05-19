@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BTCPayServer.Data;
+using BTCPayServer.Models;
 using BTCPayServer.Services.Invoices;
+using NBitpayClient;
 
 namespace BTCPayServer.Payments
 {
@@ -30,6 +32,17 @@ namespace BTCPayServer.Payments
         /// <param name="network"></param>
         /// <returns></returns>
         object PreparePayment(ISupportedPaymentMethod supportedPaymentMethod, StoreData store, BTCPayNetwork network);
+        
+        bool CanHandle(PaymentMethodId paymentMethodId);
+        Task<string> ToString(PaymentMethodId paymentMethodId);
+
+        Task PrepareInvoiceCryptoInfo(InvoiceCryptoInfo invoiceCryptoInfo, InvoiceEntity invoiceEntity,
+            PaymentMethodAccounting accounting);
+        
+        Task PrepareInvoiceDto(InvoiceResponse invoiceResponse, InvoiceEntity invoiceEntity,
+            InvoiceCryptoInfo invoiceCryptoInfo,
+            PaymentMethodAccounting accounting, PaymentMethod info);
+
     }
 
     public interface IPaymentMethodHandler<T> : IPaymentMethodHandler where T : ISupportedPaymentMethod
@@ -41,6 +54,17 @@ namespace BTCPayServer.Payments
     {
         
         public abstract Task<IPaymentMethodDetails> CreatePaymentMethodDetails(T supportedPaymentMethod, PaymentMethod paymentMethod, StoreData store, BTCPayNetwork network, object preparePaymentObject);
+        public abstract bool CanHandle(PaymentMethodId paymentMethodId);
+
+        public abstract  Task<string> ToString(PaymentMethodId paymentMethodId);
+
+        public abstract Task PrepareInvoiceCryptoInfo(InvoiceCryptoInfo invoiceCryptoInfo, InvoiceEntity invoiceEntity,
+            PaymentMethodAccounting accounting);
+
+        public abstract Task PrepareInvoiceDto(InvoiceResponse invoiceResponse, InvoiceEntity invoiceEntity,
+            InvoiceCryptoInfo invoiceCryptoInfo, PaymentMethodAccounting accounting, PaymentMethod info);
+
+
         public virtual object PreparePayment(T supportedPaymentMethod, StoreData store, BTCPayNetwork network)
         {
             return null;

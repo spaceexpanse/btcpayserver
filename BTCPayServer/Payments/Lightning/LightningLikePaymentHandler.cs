@@ -8,9 +8,11 @@ using System.Threading.Tasks;
 using BTCPayServer.Data;
 using BTCPayServer.HostedServices;
 using BTCPayServer.Lightning;
+using BTCPayServer.Models;
 using BTCPayServer.Services.Invoices;
 using BTCPayServer.Services;
 using NBitcoin;
+using NBitpayClient;
 
 namespace BTCPayServer.Payments.Lightning
 {
@@ -124,6 +126,32 @@ namespace BTCPayServer.Payments.Lightning
             {
                 throw new PaymentMethodUnavailableException($"Error while connecting to the lightning node via {nodeInfo.Host}:{nodeInfo.Port} ({ex.Message})");
             }
+        }
+        
+        public override bool CanHandle(PaymentMethodId paymentMethodId)
+        {
+            return paymentMethodId.PaymentType == PaymentTypes.LightningLike;
+        }
+
+        public override Task<string> ToString(PaymentMethodId paymentMethodId)
+        {
+            return Task.FromResult($"{paymentMethodId.CryptoCode} (Off-Chain)");
+        }
+
+        public override Task PrepareInvoiceCryptoInfo(InvoiceCryptoInfo invoiceCryptoInfo, InvoiceEntity invoiceEntity,
+            PaymentMethodAccounting accounting)
+        {
+            invoiceCryptoInfo.PaymentUrls = new InvoicePaymentUrls()
+            {
+                BOLT11 = $"lightning:{invoiceCryptoInfo.Address}"
+            };
+            return Task.CompletedTask;
+        }
+
+        public override Task PrepareInvoiceDto(InvoiceResponse invoiceResponse, InvoiceEntity invoiceEntity,
+            InvoiceCryptoInfo invoiceCryptoInfo, PaymentMethodAccounting accounting, PaymentMethod info)
+        {
+          return Task.CompletedTask
         }
     }
 }
