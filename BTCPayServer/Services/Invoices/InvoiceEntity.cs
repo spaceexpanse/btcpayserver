@@ -450,7 +450,7 @@ namespace BTCPayServer.Services.Invoices
                         BIP21 = $"{scheme}:{cryptoInfo.Address}?amount={cryptoInfo.Due}",
                     };
                 }
-
+//Todo: Abstract
                 if (paymentId.PaymentType == PaymentTypes.LightningLike)
                 {
                     cryptoInfo.PaymentUrls = new NBitpayClient.InvoicePaymentUrls()
@@ -944,6 +944,7 @@ namespace BTCPayServer.Services.Invoices
                 paymentData.Legacy = true;
                 return paymentData;
             }
+            //Todo: Abstract
             if (GetPaymentMethodId().PaymentType == PaymentTypes.BTCLike)
             {
                 var paymentData = JsonConvert.DeserializeObject<Payments.Bitcoin.BitcoinLikePaymentData>(CryptoPaymentData);

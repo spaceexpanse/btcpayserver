@@ -81,6 +81,7 @@ namespace BTCPayServer.Payments
 
         private static string PrettyMethod(PaymentTypes paymentType)
         {
+            //Todo: Abstract
             switch (paymentType)
             {
                 case PaymentTypes.BTCLike:
@@ -94,6 +95,7 @@ namespace BTCPayServer.Payments
 
         public static bool TryParse(string str, out PaymentMethodId paymentMethodId)
         {
+            //Todo: Abstract
             paymentMethodId = null;
             var parts = str.Split('_', StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length == 0 || parts.Length > 2)

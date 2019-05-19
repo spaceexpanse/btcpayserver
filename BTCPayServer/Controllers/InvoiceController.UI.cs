@@ -156,6 +156,7 @@ namespace BTCPayServer.Controllers
 
         private string ToString(PaymentMethodId paymentMethodId)
         {
+            //TODO: abstract to supportedpaymentmethod
             var type = paymentMethodId.PaymentType.ToString();
             switch (paymentMethodId.PaymentType)
             {

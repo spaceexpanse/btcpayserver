@@ -267,7 +267,7 @@ namespace BTCPayServer.Controllers
                     var paymentDetails = await handler.CreatePaymentMethodDetails(supportedPaymentMethod, paymentMethod, store, network, preparePayment);
                     paymentMethod.SetPaymentMethodDetails(paymentDetails);
                 }
-
+//todo: Move this logic to Payme
                 Func<Money, Money, bool> compare = null;
                 CurrencyValue limitValue = null;
                 string errorMessage = null;
