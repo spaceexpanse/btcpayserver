@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using BTCPayServer.Data;
 using BTCPayServer.Models;
 using BTCPayServer.Models.InvoicingModels;
+using BTCPayServer.Rating;
 using BTCPayServer.Services;
 using BTCPayServer.Services.Invoices;
 using BTCPayServer.Services.Rates;
@@ -74,6 +75,28 @@ namespace BTCPayServer.Payments.Bitcoin
             return GetPaymentMethodName(network);
         }
 
+        public override async Task<string> IsPaymentMethodAllowedBasedOnInvoiceAmount(StoreBlob storeBlob,
+            Dictionary<CurrencyPair, Task<RateResult>> rate, Money amount, PaymentMethodId paymentMethodId)
+        {
+            if (storeBlob.OnChainMinValue == null)
+            {
+                return null;
+            }
+
+            var limitValueRate = await rate[new CurrencyPair(paymentMethodId.CryptoCode, storeBlob.OnChainMinValue.Currency)];
+            
+            if (limitValueRate.BidAsk != null)
+            {
+                var limitValueCrypto = Money.Coins(storeBlob.OnChainMinValue.Value / limitValueRate.BidAsk.Bid);
+
+                if (amount < limitValueCrypto)
+                {
+                    return null;
+                }
+            }
+            return "The amount of the invoice is too low to be paid on chain";
+        }
+
         public override IEnumerable<PaymentMethodId> GetSupportedPaymentMethods()
         {
             return _networkProvider.GetAll()
@@ -85,21 +108,25 @@ namespace BTCPayServer.Payments.Bitcoin
             BitcoinLikePaymentData paymentData;
             if (string.IsNullOrEmpty(paymentEntity.CryptoPaymentDataType))
             {
+#pragma warning disable 618
                 // For invoices created when CryptoPaymentDataType was not existing, we just consider that it is a RBFed payment for safety
-                paymentData = new Payments.Bitcoin.BitcoinLikePaymentData();
+                paymentData = new BitcoinLikePaymentData();
                 paymentData.Outpoint = paymentEntity.Outpoint;
                 paymentData.Output = paymentEntity.Output;
                 paymentData.RBF = true;
                 paymentData.ConfirmationCount = 0;
                 paymentData.Legacy = true;
                 return paymentData;
+#pragma warning restore 618
             }
 
             paymentData =
-                JsonConvert.DeserializeObject<Payments.Bitcoin.BitcoinLikePaymentData>(paymentEntity.CryptoPaymentData);
+                JsonConvert.DeserializeObject<BitcoinLikePaymentData>(paymentEntity.CryptoPaymentData);
+#pragma warning disable 618
             // legacy
             paymentData.Output = paymentEntity.Output;
             paymentData.Outpoint = paymentEntity.Outpoint;
+#pragma warning restore 618
             return paymentData;
         }
 

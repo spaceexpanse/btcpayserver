@@ -5,7 +5,10 @@ using System.Threading.Tasks;
 using BTCPayServer.Data;
 using BTCPayServer.Models;
 using BTCPayServer.Models.InvoicingModels;
+using BTCPayServer.Rating;
 using BTCPayServer.Services.Invoices;
+using BTCPayServer.Services.Rates;
+using NBitcoin;
 using NBitpayClient;
 
 namespace BTCPayServer.Payments
@@ -45,6 +48,10 @@ namespace BTCPayServer.Payments
         string GetCryptoImage(PaymentMethodId paymentMethodId);
         string GetPaymentMethodName(PaymentMethodId paymentMethodId);
 
+        Task<string> IsPaymentMethodAllowedBasedOnInvoiceAmount(StoreBlob storeBlob,
+            Dictionary<CurrencyPair, Task<RateResult>> rate,
+            Money amount, PaymentMethodId paymentMethodId);
+        
         IEnumerable<PaymentMethodId> GetSupportedPaymentMethods();
 
         CryptoPaymentData GetCryptoPaymentData(PaymentEntity paymentEntity);
@@ -69,6 +76,8 @@ namespace BTCPayServer.Payments
         public abstract Task PreparePaymentModel(PaymentModel model, InvoiceResponse invoiceResponse);
         public abstract string GetCryptoImage(PaymentMethodId paymentMethodId);
         public abstract string GetPaymentMethodName(PaymentMethodId paymentMethodId);
+        public abstract Task<string> IsPaymentMethodAllowedBasedOnInvoiceAmount(StoreBlob storeBlob,
+            Dictionary<CurrencyPair, Task<RateResult>> rate, Money amount, PaymentMethodId paymentMethodId);
         public abstract IEnumerable<PaymentMethodId> GetSupportedPaymentMethods();
         public abstract CryptoPaymentData GetCryptoPaymentData(PaymentEntity paymentEntity);
 

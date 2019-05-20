@@ -10,8 +10,10 @@ using BTCPayServer.HostedServices;
 using BTCPayServer.Lightning;
 using BTCPayServer.Models;
 using BTCPayServer.Models.InvoicingModels;
+using BTCPayServer.Rating;
 using BTCPayServer.Services.Invoices;
 using BTCPayServer.Services;
+using BTCPayServer.Services.Rates;
 using NBitcoin;
 using NBitpayClient;
 using Newtonsoft.Json;
@@ -150,7 +152,29 @@ namespace BTCPayServer.Payments.Lightning
         {
             return _networkProvider.GetAll().Select(network => new PaymentMethodId(network.CryptoCode, PaymentTypes.LightningLike));
         }
+        
+        
+        public override async Task<string> IsPaymentMethodAllowedBasedOnInvoiceAmount(StoreBlob storeBlob,
+            Dictionary<CurrencyPair, Task<RateResult>> rate, Money amount, PaymentMethodId paymentMethodId)
+        {
+            if (storeBlob.OnChainMinValue == null)
+            {
+                return null;
+            }
 
+            var limitValueRate = await rate[new CurrencyPair(paymentMethodId.CryptoCode, storeBlob.OnChainMinValue.Currency)];
+            
+            if (limitValueRate.BidAsk != null)
+            {
+                var limitValueCrypto = Money.Coins(storeBlob.OnChainMinValue.Value / limitValueRate.BidAsk.Bid);
+
+                if (amount < limitValueCrypto)
+                {
+                    return null;
+                }
+            }
+            return "The amount of the invoice is too high to be paid with lightning";
+        }
         public override CryptoPaymentData GetCryptoPaymentData(PaymentEntity paymentEntity)
         {
             return JsonConvert.DeserializeObject<Payments.Lightning.LightningLikePaymentData>(paymentEntity.CryptoPaymentData);
