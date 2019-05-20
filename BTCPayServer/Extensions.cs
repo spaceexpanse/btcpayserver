@@ -366,5 +366,11 @@ namespace BTCPayServer
             }
             else return input;
         }
+
+        public static IPaymentMethodHandler GetCorrectHandler(
+            this IEnumerable<IPaymentMethodHandler> paymentMethodHandlers, PaymentMethodId paymentMethodId)
+        {
+            return paymentMethodHandlers.First(handler => handler.CanHandle(paymentMethodId));
+        }
     }
 }

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using BTCPayServer.Data;
 using BTCPayServer.Models;
+using BTCPayServer.Models.InvoicingModels;
 using BTCPayServer.Services;
 using BTCPayServer.Services.Invoices;
 using BTCPayServer.Services.Rates;
@@ -15,17 +16,23 @@ namespace BTCPayServer.Payments.Bitcoin
     public class BitcoinLikePaymentHandler : PaymentMethodHandlerBase<DerivationSchemeSettings>
     {
         ExplorerClientProvider _ExplorerProvider;
+        private readonly BTCPayNetworkProvider _networkProvider;
         private IFeeProviderFactory _FeeRateProviderFactory;
+        private readonly BTCPayServerEnvironment _environment;
         private Services.Wallets.BTCPayWalletProvider _WalletProvider;
 
         public BitcoinLikePaymentHandler(ExplorerClientProvider provider,
+                                        BTCPayNetworkProvider networkProvider,
                                          IFeeProviderFactory feeRateProviderFactory,
+                                        BTCPayServerEnvironment environment,
                                          Services.Wallets.BTCPayWalletProvider walletProvider)
         {
             if (provider == null)
                 throw new ArgumentNullException(nameof(provider));
             _ExplorerProvider = provider;
+            _networkProvider = networkProvider;
             this._FeeRateProviderFactory = feeRateProviderFactory;
+            _environment = environment;
             _WalletProvider = walletProvider;
         }
 
@@ -34,6 +41,47 @@ namespace BTCPayServer.Payments.Bitcoin
             public Task<FeeRate> GetFeeRate;
             public Task<BitcoinAddress> ReserveAddress;
         }
+
+        public override async Task PreparePaymentModel(PaymentModel model, InvoiceResponse invoiceResponse)
+        {
+            var paymentMethodId = new PaymentMethodId(model.CryptoCode, PaymentTypes.BTCLike);
+            
+            var cryptoInfo = invoiceResponse.CryptoInfo.First(o => o.GetpaymentMethodId() == paymentMethodId);
+            var network = _networkProvider.GetNetwork(model.CryptoCode);
+            model.IsLightning = false;
+            model.PaymentMethodName = GetPaymentMethodName(network);
+            model.CryptoImage = GetCryptoImage(network);
+            model.PaymentMethodId = await ToString(false, paymentMethodId);
+            model.InvoiceBitcoinUrl = cryptoInfo.PaymentUrls.BIP21;
+            model.InvoiceBitcoinUrlQR = cryptoInfo.PaymentUrls.BIP21;
+        }
+
+        public override string GetCryptoImage(PaymentMethodId paymentMethodId)
+        {
+            var network = _networkProvider.GetNetwork(paymentMethodId.CryptoCode);
+            return GetCryptoImage(network);
+        }
+        
+        private string GetCryptoImage(BTCPayNetwork network)
+        {
+            return _environment.Context.Request.GetRelativePathOrAbsolute(network.CryptoImagePath);
+        }
+        public override string GetPaymentMethodName(PaymentMethodId paymentMethodId)
+        {
+            var network = _networkProvider.GetNetwork(paymentMethodId.CryptoCode);
+            return GetPaymentMethodName(network);
+        }
+
+        public override IEnumerable<PaymentMethodId> GetSupportedPaymentMethods()
+        {
+            return _networkProvider.GetAll().Select(network => new PaymentMethodId(network.CryptoCode, PaymentTypes.BTCLike));
+        }
+
+        private string GetPaymentMethodName(BTCPayNetwork network)
+        {
+            return network.DisplayName;
+        }
+        
 
         public override object PreparePayment(DerivationSchemeSettings supportedPaymentMethod, StoreData store, BTCPayNetwork network)
         {

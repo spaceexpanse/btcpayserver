@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using BTCPayServer.Data;
 using BTCPayServer.Models;
+using BTCPayServer.Models.InvoicingModels;
 using BTCPayServer.Services.Invoices;
 using NBitpayClient;
 
@@ -40,6 +41,11 @@ namespace BTCPayServer.Payments
             InvoiceCryptoInfo invoiceCryptoInfo,
             PaymentMethodAccounting accounting, PaymentMethod info);
 
+        Task PreparePaymentModel(PaymentModel model, InvoiceResponse invoiceResponse);
+        string GetCryptoImage(PaymentMethodId paymentMethodId);
+        string GetPaymentMethodName(PaymentMethodId paymentMethodId);
+
+        IEnumerable<PaymentMethodId> GetSupportedPaymentMethods();
     }
 
     public interface IPaymentMethodHandler<T> : IPaymentMethodHandler where T : ISupportedPaymentMethod
@@ -57,6 +63,11 @@ namespace BTCPayServer.Payments
         
         public abstract Task PrepareInvoiceDto(InvoiceResponse invoiceResponse, InvoiceEntity invoiceEntity,
             InvoiceCryptoInfo invoiceCryptoInfo, PaymentMethodAccounting accounting, PaymentMethod info);
+
+        public abstract Task PreparePaymentModel(PaymentModel model, InvoiceResponse invoiceResponse);
+        public abstract string GetCryptoImage(PaymentMethodId paymentMethodId);
+        public abstract string GetPaymentMethodName(PaymentMethodId paymentMethodId);
+        public abstract IEnumerable<PaymentMethodId> GetSupportedPaymentMethods();
 
 
         public virtual object PreparePayment(T supportedPaymentMethod, StoreData store, BTCPayNetwork network)

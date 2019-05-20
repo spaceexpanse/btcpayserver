@@ -9,6 +9,7 @@ using BTCPayServer.Data;
 using BTCPayServer.HostedServices;
 using BTCPayServer.Lightning;
 using BTCPayServer.Models;
+using BTCPayServer.Models.InvoicingModels;
 using BTCPayServer.Services.Invoices;
 using BTCPayServer.Services;
 using NBitcoin;
@@ -22,15 +23,21 @@ namespace BTCPayServer.Payments.Lightning
 
         NBXplorerDashboard _Dashboard;
         private readonly LightningClientFactoryService _lightningClientFactory;
+        private readonly BTCPayNetworkProvider _networkProvider;
+        private readonly BTCPayServerEnvironment _environment;
         private readonly SocketFactory _socketFactory;
 
         public LightningLikePaymentHandler(
             NBXplorerDashboard dashboard,
             LightningClientFactoryService lightningClientFactory,
+            BTCPayNetworkProvider networkProvider,
+            BTCPayServerEnvironment environment,
             SocketFactory socketFactory)
         {
             _Dashboard = dashboard;
             _lightningClientFactory = lightningClientFactory;
+            _networkProvider = networkProvider;
+            _environment = environment;
             _socketFactory = socketFactory;
         }
         public override async Task<IPaymentMethodDetails> CreatePaymentMethodDetails(LightningSupportedPaymentMethod supportedPaymentMethod, PaymentMethod paymentMethod, StoreData store, BTCPayNetwork network, object preparePaymentObject)
@@ -138,6 +145,11 @@ namespace BTCPayServer.Payments.Lightning
             return Task.FromResult($"{paymentMethodId.CryptoCode} ({ToString()})");
         }
         
+        public override IEnumerable<PaymentMethodId> GetSupportedPaymentMethods()
+        {
+            return _networkProvider.GetAll().Select(network => new PaymentMethodId(network.CryptoCode, PaymentTypes.LightningLike));
+        }
+        
         public override string ToString()
         {
             return "Off-Chain";
@@ -151,6 +163,41 @@ namespace BTCPayServer.Payments.Lightning
                 BOLT11 = $"lightning:{invoiceCryptoInfo.Address}"
             };
             return Task.CompletedTask;
+        }
+
+        public override async Task PreparePaymentModel(PaymentModel model, InvoiceResponse invoiceResponse)
+        {
+            var paymentMethodId = new PaymentMethodId(model.CryptoCode, PaymentTypes.LightningLike);
+            
+            var cryptoInfo = invoiceResponse.CryptoInfo.First(o => o.GetpaymentMethodId() == paymentMethodId);
+            var network = _networkProvider.GetNetwork(model.CryptoCode);
+            model.IsLightning = false;
+            model.PaymentMethodName = GetPaymentMethodName(network);
+            model.CryptoImage = GetCryptoImage(network);
+            model.PaymentMethodId = await ToString(false, paymentMethodId);
+            model.InvoiceBitcoinUrl = cryptoInfo.PaymentUrls.BOLT11;
+            model.InvoiceBitcoinUrlQR = cryptoInfo.PaymentUrls.BOLT11.ToUpperInvariant();
+        }
+
+        public override string GetCryptoImage(PaymentMethodId paymentMethodId)
+        {
+            var network = _networkProvider.GetNetwork(paymentMethodId.CryptoCode);
+            return GetCryptoImage(network);
+        }
+        
+        private string GetCryptoImage(BTCPayNetwork network)
+        {
+            return _environment.Context.Request.GetRelativePathOrAbsolute(network.LightningImagePath);
+        }
+        public override string GetPaymentMethodName(PaymentMethodId paymentMethodId)
+        {
+            var network = _networkProvider.GetNetwork(paymentMethodId.CryptoCode);
+            return GetPaymentMethodName(network);
+        }
+        
+        private string GetPaymentMethodName(BTCPayNetwork network)
+        {
+            return $"{network.DisplayName} (Lightning)";
         }
     }
 }

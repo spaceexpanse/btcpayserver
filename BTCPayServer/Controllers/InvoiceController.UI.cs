@@ -82,7 +82,8 @@ namespace BTCPayServer.Controllers
                 {
                     Destination = h.GetAddress(),
                     PaymentMethod =
-                        await _paymentMethodHandlers.First(handler => handler.CanHandle(h.GetPaymentMethodId()))
+                        await _paymentMethodHandlers
+                            .GetCorrectHandler(h.GetPaymentMethodId())
                             .ToString(true, h.GetPaymentMethodId()),
                     Current = !h.UnAssigned.HasValue
                 }))).ToArray();
@@ -105,7 +106,7 @@ namespace BTCPayServer.Controllers
                 var paymentMethodId = data.GetId();
                 var cryptoPayment = new InvoiceDetailsModel.CryptoPayment();
                 cryptoPayment.PaymentMethod = await _paymentMethodHandlers
-                    .First(handler => handler.CanHandle(paymentMethodId))
+                    .GetCorrectHandler(paymentMethodId)
                     .ToString(true, paymentMethodId);
                 cryptoPayment.Due = _CurrencyNameTable.DisplayFormatCurrency(accounting.Due.ToDecimal(MoneyUnit.BTC), paymentMethodId.CryptoCode);
                 cryptoPayment.Paid = _CurrencyNameTable.DisplayFormatCurrency(accounting.CryptoPaid.ToDecimal(MoneyUnit.BTC), paymentMethodId.CryptoCode);
@@ -250,7 +251,6 @@ namespace BTCPayServer.Controllers
             var paymentMethod = invoice.GetPaymentMethod(paymentMethodId, _NetworkProvider);
             var paymentMethodDetails = paymentMethod.GetPaymentMethodDetails();
             var dto = await invoice.EntityToDTO(_NetworkProvider, _paymentMethodHandlers);
-            var cryptoInfo = dto.CryptoInfo.First(o => o.GetpaymentMethodId() == paymentMethodId);
             var storeBlob = store.GetStoreBlob();
             var currency = invoice.ProductInformation.Currency;
             var accounting = paymentMethod.Calculate();
@@ -275,10 +275,6 @@ namespace BTCPayServer.Controllers
             {
                 CryptoCode = network.CryptoCode,
                 RootPath = this.Request.PathBase.Value.WithTrailingSlash(),
-                PaymentMethodId = paymentMethodId.ToString(),
-                PaymentMethodName = GetDisplayName(paymentMethodId, network),
-                CryptoImage = GetImage(paymentMethodId, network),
-                IsLightning = paymentMethodId.PaymentType == PaymentTypes.LightningLike,
                 OrderId = invoice.OrderId,
                 InvoiceId = invoice.Id,
                 DefaultLang = storeBlob.DefaultLang ?? "en",
@@ -300,15 +296,7 @@ namespace BTCPayServer.Controllers
                 MerchantRefLink = invoice.RedirectURL ?? "/",
                 RedirectAutomatically = invoice.RedirectAutomatically,
                 StoreName = store.StoreName,
-                //TODO: abstract
-                InvoiceBitcoinUrl = paymentMethodId.PaymentType == PaymentTypes.BTCLike ? cryptoInfo.PaymentUrls.BIP21 :
-                                    paymentMethodId.PaymentType == PaymentTypes.LightningLike ? cryptoInfo.PaymentUrls.BOLT11 :
-                                    throw new NotSupportedException(),
                 PeerInfo = (paymentMethodDetails as LightningLikePaymentMethodDetails)?.NodeInfo,
-                //TODO: abstract
-                InvoiceBitcoinUrlQR = paymentMethodId.PaymentType == PaymentTypes.BTCLike ? cryptoInfo.PaymentUrls.BIP21 :
-                                    paymentMethodId.PaymentType == PaymentTypes.LightningLike ? cryptoInfo.PaymentUrls.BOLT11.ToUpperInvariant() :
-                                    throw new NotSupportedException(),
                 TxCount = accounting.TxRequired,
                 BtcPaid = accounting.Paid.ToString(),
 #pragma warning disable CS0618 // Type or member is obsolete
@@ -326,35 +314,42 @@ namespace BTCPayServer.Controllers
                 StoreId = store.Id,
                 AvailableCryptos = invoice.GetPaymentMethods(_NetworkProvider)
                                           .Where(i => i.Network != null)
-                                          .Select(kv => new PaymentModel.AvailableCrypto()
+                                          .Select(kv =>
                                           {
-                                              PaymentMethodId = kv.GetId().ToString(),
-                                              CryptoCode = kv.GetId().CryptoCode,
-                                              PaymentMethodName = GetDisplayName(kv.GetId(), kv.Network),
-                                              IsLightning = kv.GetId().PaymentType == PaymentTypes.LightningLike,
-                                              CryptoImage = GetImage(kv.GetId(), kv.Network),
-                                              Link = Url.Action(nameof(Checkout), new { invoiceId = invoiceId, paymentMethodId = kv.GetId().ToString() })
+                                              var availableCryptoPaymentMethodId = kv.GetId();
+                                              var availableCryptoHandler =
+                                                  _paymentMethodHandlers.GetCorrectHandler(
+                                                      availableCryptoPaymentMethodId);
+                                              return new PaymentModel.AvailableCrypto()
+                                              {
+                                                  PaymentMethodId = kv.GetId().ToString(),
+                                                  CryptoCode = kv.GetId().CryptoCode,
+                                                  PaymentMethodName = availableCryptoHandler.GetPaymentMethodName(availableCryptoPaymentMethodId),
+                                                  IsLightning =
+                                                      kv.GetId().PaymentType == PaymentTypes.LightningLike,
+                                                  CryptoImage = availableCryptoHandler.GetCryptoImage(availableCryptoPaymentMethodId),
+                                                  Link = Url.Action(nameof(Checkout),
+                                                      new
+                                                      {
+                                                          invoiceId = invoiceId,
+                                                          paymentMethodId = kv.GetId().ToString()
+                                                      })
+                                              };
                                           }).Where(c => c.CryptoImage != "/")
                                           .OrderByDescending(a => a.CryptoCode == "BTC").ThenBy(a => a.PaymentMethodName).ThenBy(a => a.IsLightning ? 1 : 0)
                                           .ToList()
             };
 
+            var correctHandler = _paymentMethodHandlers.GetCorrectHandler(paymentMethod.GetId());
+
+            await correctHandler.PreparePaymentModel(model, dto);
+            
+            
             var expiration = TimeSpan.FromSeconds(model.ExpirationSeconds);
             model.TimeLeft = expiration.PrettyPrint();
             return model;
         }
 
-        private string GetDisplayName(PaymentMethodId paymentMethodId, BTCPayNetwork network)
-        {//TODO: abstract
-            return paymentMethodId.PaymentType == PaymentTypes.BTCLike ?
-                network.DisplayName : network.DisplayName + " (Lightning)";
-        }
-
-        private string GetImage(PaymentMethodId paymentMethodId, BTCPayNetwork network)
-        {//TODO: abstract
-            return paymentMethodId.PaymentType == PaymentTypes.BTCLike ?
-                this.Request.GetRelativePathOrAbsolute(network.CryptoImagePath) : this.Request.GetRelativePathOrAbsolute(network.LightningImagePath);
-        }
 
         private string OrderAmountFromInvoice(string cryptoCode, ProductInformation productInformation)
         {
@@ -564,12 +559,9 @@ namespace BTCPayServer.Controllers
         {
             var stores = await _StoreRepository.GetStoresByUserId(GetUserId());
             model.Stores = new SelectList(stores, nameof(StoreData.Id), nameof(StoreData.StoreName), model.StoreId);
-            //TODO: abstract
-            var paymentMethods = new SelectList(_NetworkProvider.GetAll().SelectMany(network => new[]
-                {
-                    new PaymentMethodId(network.CryptoCode, PaymentTypes.BTCLike),
-                    new PaymentMethodId(network.CryptoCode, PaymentTypes.LightningLike)
-                }).Select(id => new SelectListItem(id.ToString(true), id.ToString(false))),
+            var paymentMethods = new SelectList( _paymentMethodHandlers
+                    .SelectMany(handler => handler.GetSupportedPaymentMethods())
+                    .Select(id => new SelectListItem(id.ToString(true), id.ToString(false))),
                 nameof(SelectListItem.Value),
                 nameof(SelectListItem.Text));
             model.AvailablePaymentMethods = paymentMethods;

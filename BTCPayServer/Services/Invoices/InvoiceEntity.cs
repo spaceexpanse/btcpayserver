@@ -438,7 +438,7 @@ namespace BTCPayServer.Services.Invoices
                     };
                 }).ToList();
 
-                var paymentHandler =  paymentMethodHandlers.First(handler => handler.CanHandle(paymentId));
+                var paymentHandler = paymentMethodHandlers.GetCorrectHandler(paymentId);
 
                 await paymentHandler.PrepareInvoiceDto(dto, this, cryptoInfo, accounting, info);
                 
