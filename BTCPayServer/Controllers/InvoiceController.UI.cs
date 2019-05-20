@@ -77,18 +77,18 @@ namespace BTCPayServer.Controllers
                 StatusMessage = StatusMessage
             };
 
-            model.Addresses = (await Task.WhenAll(invoice.HistoricalAddresses.Select(async h =>
+            model.Addresses = invoice.HistoricalAddresses.Select(h =>
                 new InvoiceDetailsModel.AddressModel
                 {
                     Destination = h.GetAddress(),
                     PaymentMethod =
-                        await _paymentMethodHandlers
+                        _paymentMethodHandlers
                             .GetCorrectHandler(h.GetPaymentMethodId())
                             .ToString(true, h.GetPaymentMethodId()),
                     Current = !h.UnAssigned.HasValue
-                }))).ToArray();
+                }).ToArray();
 
-            var details = await InvoicePopulatePayments(invoice);
+            var details = InvoicePopulatePayments(invoice);
             model.CryptoPayments = details.CryptoPayments;
             model.OnChainPayments = details.OnChainPayments;
             model.OffChainPayments = details.OffChainPayments;
@@ -96,7 +96,7 @@ namespace BTCPayServer.Controllers
             return View(model);
         }
 
-        private async Task<InvoiceDetailsModel> InvoicePopulatePayments(InvoiceEntity invoice)
+        private InvoiceDetailsModel InvoicePopulatePayments(InvoiceEntity invoice)
         {
             var model = new InvoiceDetailsModel();
 
@@ -105,7 +105,7 @@ namespace BTCPayServer.Controllers
                 var accounting = data.Calculate();
                 var paymentMethodId = data.GetId();
                 var cryptoPayment = new InvoiceDetailsModel.CryptoPayment();
-                cryptoPayment.PaymentMethod = await _paymentMethodHandlers
+                cryptoPayment.PaymentMethod = _paymentMethodHandlers
                     .GetCorrectHandler(paymentMethodId)
                     .ToString(true, paymentMethodId);
                 cryptoPayment.Due = _CurrencyNameTable.DisplayFormatCurrency(accounting.Due.ToDecimal(MoneyUnit.BTC), paymentMethodId.CryptoCode);
@@ -476,7 +476,7 @@ namespace BTCPayServer.Controllers
                     AmountCurrency = _CurrencyNameTable.DisplayFormatCurrency(invoice.ProductInformation.Price, invoice.ProductInformation.Currency),
                     CanMarkInvalid = state.CanMarkInvalid(),
                     CanMarkComplete = state.CanMarkComplete(),
-                    Details = await InvoicePopulatePayments(invoice)
+                    Details = InvoicePopulatePayments(invoice)
                 });
             }
             model.Total = await counting;
@@ -539,14 +539,16 @@ namespace BTCPayServer.Controllers
                 StatusMessage = "Error: You need to create at least one store before creating a transaction";
                 return RedirectToAction(nameof(UserStoresController.ListStores), "UserStores");
             }
-            //TODO: abstract
-            var paymentMethods = new SelectList(_NetworkProvider.GetAll().SelectMany(network => new[]
-                                                         {
-                                                             new PaymentMethodId(network.CryptoCode, PaymentTypes.BTCLike),
-                                                             new PaymentMethodId(network.CryptoCode, PaymentTypes.LightningLike)
-                                                         }).Select(id => new SelectListItem(id.ToString(true), id.ToString(false))),
-                                                             nameof(SelectListItem.Value),
-                                                             nameof(SelectListItem.Text));
+            var paymentMethods = new SelectList(_paymentMethodHandlers
+                .Select(handler => handler.GetSupportedPaymentMethods())
+                .SelectMany(ids =>
+                {
+                    var handler = _paymentMethodHandlers.GetCorrectHandler(ids.First());
+                    return ids
+                        .Select(id => new SelectListItem(handler.ToString(true, id), handler.ToString(false, id)));
+                }),
+                nameof(SelectListItem.Value),
+                nameof(SelectListItem.Text));
 
             return View(new CreateInvoiceModel() { Stores = stores, AvailablePaymentMethods = paymentMethods });
         }
@@ -559,9 +561,14 @@ namespace BTCPayServer.Controllers
         {
             var stores = await _StoreRepository.GetStoresByUserId(GetUserId());
             model.Stores = new SelectList(stores, nameof(StoreData.Id), nameof(StoreData.StoreName), model.StoreId);
-            var paymentMethods = new SelectList( _paymentMethodHandlers
-                    .SelectMany(handler => handler.GetSupportedPaymentMethods())
-                    .Select(id => new SelectListItem(id.ToString(true), id.ToString(false))),
+            var paymentMethods = new SelectList(_paymentMethodHandlers
+                    .Select(handler => handler.GetSupportedPaymentMethods())
+                    .SelectMany(ids =>
+                    {
+                        var handler = _paymentMethodHandlers.GetCorrectHandler(ids.First());
+                        return ids
+                            .Select(id => new SelectListItem(handler.ToString(true, id), handler.ToString(false, id)));
+                    }),
                 nameof(SelectListItem.Value),
                 nameof(SelectListItem.Text));
             model.AvailablePaymentMethods = paymentMethods;

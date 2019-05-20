@@ -42,7 +42,7 @@ namespace BTCPayServer.Payments.Bitcoin
             public Task<BitcoinAddress> ReserveAddress;
         }
 
-        public override async Task PreparePaymentModel(PaymentModel model, InvoiceResponse invoiceResponse)
+        public override Task PreparePaymentModel(PaymentModel model, InvoiceResponse invoiceResponse)
         {
             var paymentMethodId = new PaymentMethodId(model.CryptoCode, PaymentTypes.BTCLike);
             
@@ -51,9 +51,10 @@ namespace BTCPayServer.Payments.Bitcoin
             model.IsLightning = false;
             model.PaymentMethodName = GetPaymentMethodName(network);
             model.CryptoImage = GetCryptoImage(network);
-            model.PaymentMethodId = await ToString(false, paymentMethodId);
+            model.PaymentMethodId = ToString(false, paymentMethodId);
             model.InvoiceBitcoinUrl = cryptoInfo.PaymentUrls.BIP21;
             model.InvoiceBitcoinUrlQR = cryptoInfo.PaymentUrls.BIP21;
+            return Task.CompletedTask;
         }
 
         public override string GetCryptoImage(PaymentMethodId paymentMethodId)
@@ -120,9 +121,9 @@ namespace BTCPayServer.Payments.Bitcoin
         }
 
         
-        public override Task<string> ToString(bool pretty, PaymentMethodId paymentMethodId)
+        public override string ToString(bool pretty, PaymentMethodId paymentMethodId)
         {
-            return Task.FromResult(!pretty ? paymentMethodId.CryptoCode : $"{paymentMethodId.CryptoCode} ({ToString()})");
+            return !pretty ? paymentMethodId.CryptoCode : $"{paymentMethodId.CryptoCode} ({ToString()})";
         }
         
         public override string ToString()

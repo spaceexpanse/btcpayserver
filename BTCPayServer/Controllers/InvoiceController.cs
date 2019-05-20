@@ -250,7 +250,7 @@ namespace BTCPayServer.Controllers
         {
             try
             {
-                var logPrefix = $"{supportedPaymentMethod.PaymentId.ToString(true)}:";
+                var logPrefix = $"{handler.ToString(true, supportedPaymentMethod.PaymentId)}:";
                 var storeBlob = store.GetStoreBlob();
                 var preparePayment = handler.PreparePayment(supportedPaymentMethod, store, network);
                 var rate = await fetchingByCurrencyPair[new CurrencyPair(network.CryptoCode, entity.ProductInformation.Currency)];
@@ -271,37 +271,7 @@ namespace BTCPayServer.Controllers
                     paymentMethod.SetPaymentMethodDetails(paymentDetails);
                 }
 //TODO: abstract
-                Func<Money, Money, bool> compare = null;
-                CurrencyValue limitValue = null;
-                string errorMessage = null;
-                if (supportedPaymentMethod.PaymentId.PaymentType == PaymentTypes.LightningLike &&
-                   storeBlob.LightningMaxValue != null)
-                {
-                    compare = (a, b) => a > b;
-                    limitValue = storeBlob.LightningMaxValue;
-                    errorMessage = "The amount of the invoice is too high to be paid with lightning";
-                }
-                else if (supportedPaymentMethod.PaymentId.PaymentType == PaymentTypes.BTCLike &&
-                   storeBlob.OnChainMinValue != null)
-                {
-                    compare = (a, b) => a < b;
-                    limitValue = storeBlob.OnChainMinValue;
-                    errorMessage = "The amount of the invoice is too low to be paid on chain";
-                }
-
-                if (compare != null)
-                {
-                    var limitValueRate = await fetchingByCurrencyPair[new CurrencyPair(network.CryptoCode, limitValue.Currency)];
-                    if (limitValueRate.BidAsk != null)
-                    {
-                        var limitValueCrypto = Money.Coins(limitValue.Value / limitValueRate.BidAsk.Bid);
-                        if (compare(paymentMethod.Calculate().Due, limitValueCrypto))
-                        {
-                            logs.Write($"{logPrefix} {errorMessage}");
-                            return null;
-                        }
-                    }
-                }
+                if (await IsPaymentMethodAllowed(fetchingByCurrencyPair, supportedPaymentMethod, network, logs, storeBlob, paymentMethod, logPrefix)) return null;
                 ///////////////
 
 
@@ -324,6 +294,45 @@ namespace BTCPayServer.Controllers
                 logs.Write($"{supportedPaymentMethod.PaymentId.CryptoCode}: Unexpected exception ({ex.ToString()})");
             }
             return null;
+        }
+
+        private static async Task<bool> IsPaymentMethodAllowed(Dictionary<CurrencyPair, Task<RateResult>> fetchingByCurrencyPair,
+            ISupportedPaymentMethod supportedPaymentMethod, BTCPayNetwork network, InvoiceLogs logs, StoreBlob storeBlob,
+            PaymentMethod paymentMethod, string logPrefix)
+        {
+            Func<Money, Money, bool> compare = null;
+            CurrencyValue limitValue = null;
+            string errorMessage = null;
+            if (supportedPaymentMethod.PaymentId.PaymentType == PaymentTypes.LightningLike &&
+                storeBlob.LightningMaxValue != null)
+            {
+                compare = (a, b) => a > b;
+                limitValue = storeBlob.LightningMaxValue;
+                errorMessage = "The amount of the invoice is too high to be paid with lightning";
+            }
+            else if (supportedPaymentMethod.PaymentId.PaymentType == PaymentTypes.BTCLike &&
+                     storeBlob.OnChainMinValue != null)
+            {
+                compare = (a, b) => a < b;
+                limitValue = storeBlob.OnChainMinValue;
+                errorMessage = "The amount of the invoice is too low to be paid on chain";
+            }
+
+            if (compare != null)
+            {
+                var limitValueRate = await fetchingByCurrencyPair[new CurrencyPair(network.CryptoCode, limitValue.Currency)];
+                if (limitValueRate.BidAsk != null)
+                {
+                    var limitValueCrypto = Money.Coins(limitValue.Value / limitValueRate.BidAsk.Bid);
+                    if (compare(paymentMethod.Calculate().Due, limitValueCrypto))
+                    {
+                        logs.Write($"{logPrefix} {errorMessage}");
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         private SpeedPolicy ParseSpeedPolicy(string transactionSpeed, SpeedPolicy defaultPolicy)

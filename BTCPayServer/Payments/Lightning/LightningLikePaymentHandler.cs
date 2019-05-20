@@ -140,9 +140,9 @@ namespace BTCPayServer.Payments.Lightning
             return paymentMethodId.PaymentType == PaymentTypes.LightningLike;
         }
 
-        public override Task<string> ToString(bool pretty, PaymentMethodId paymentMethodId)
+        public override string ToString(bool pretty, PaymentMethodId paymentMethodId)
         {
-            return Task.FromResult($"{paymentMethodId.CryptoCode} ({ToString()})");
+            return $"{paymentMethodId.CryptoCode} ({ToString()})";
         }
         
         public override IEnumerable<PaymentMethodId> GetSupportedPaymentMethods()
@@ -165,7 +165,7 @@ namespace BTCPayServer.Payments.Lightning
             return Task.CompletedTask;
         }
 
-        public override async Task PreparePaymentModel(PaymentModel model, InvoiceResponse invoiceResponse)
+        public override Task PreparePaymentModel(PaymentModel model, InvoiceResponse invoiceResponse)
         {
             var paymentMethodId = new PaymentMethodId(model.CryptoCode, PaymentTypes.LightningLike);
             
@@ -174,9 +174,10 @@ namespace BTCPayServer.Payments.Lightning
             model.IsLightning = false;
             model.PaymentMethodName = GetPaymentMethodName(network);
             model.CryptoImage = GetCryptoImage(network);
-            model.PaymentMethodId = await ToString(false, paymentMethodId);
+            model.PaymentMethodId = ToString(false, paymentMethodId);
             model.InvoiceBitcoinUrl = cryptoInfo.PaymentUrls.BOLT11;
             model.InvoiceBitcoinUrlQR = cryptoInfo.PaymentUrls.BOLT11.ToUpperInvariant();
+            return Task.CompletedTask;
         }
 
         public override string GetCryptoImage(PaymentMethodId paymentMethodId)
