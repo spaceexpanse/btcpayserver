@@ -73,9 +73,7 @@ namespace BTCPayServer.Payments
             }
             else
             {
-                if (PaymentType == PaymentTypes.BTCLike)
-                    return CryptoCode;
-                return CryptoCode + "_" + PaymentType.ToString();
+                return PaymentType == PaymentTypes.BTCLike ? CryptoCode : $"{CryptoCode}_{PaymentType}";
             }
         }
 

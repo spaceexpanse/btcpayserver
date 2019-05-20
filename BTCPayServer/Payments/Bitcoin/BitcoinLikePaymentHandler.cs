@@ -72,9 +72,14 @@ namespace BTCPayServer.Payments.Bitcoin
         }
 
         
-        public override Task<string> ToString(PaymentMethodId paymentMethodId)
+        public override Task<string> ToString(bool pretty, PaymentMethodId paymentMethodId)
         {
-            return Task.FromResult($"{paymentMethodId.CryptoCode} (On-Chain)");
+            return Task.FromResult(!pretty ? paymentMethodId.CryptoCode : $"{paymentMethodId.CryptoCode} ({ToString()})");
+        }
+        
+        public override string ToString()
+        {
+            return "On-Chain";
         }
         
         public override Task PrepareInvoiceDto(InvoiceResponse invoiceResponse, InvoiceEntity invoiceEntity,

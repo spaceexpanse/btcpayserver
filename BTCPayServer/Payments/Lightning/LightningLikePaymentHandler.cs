@@ -133,9 +133,14 @@ namespace BTCPayServer.Payments.Lightning
             return paymentMethodId.PaymentType == PaymentTypes.LightningLike;
         }
 
-        public override Task<string> ToString(PaymentMethodId paymentMethodId)
+        public override Task<string> ToString(bool pretty, PaymentMethodId paymentMethodId)
         {
-            return Task.FromResult($"{paymentMethodId.CryptoCode} (Off-Chain)");
+            return Task.FromResult($"{paymentMethodId.CryptoCode} ({ToString()})");
+        }
+        
+        public override string ToString()
+        {
+            return "Off-Chain";
         }
 
         public override Task PrepareInvoiceDto(InvoiceResponse invoiceResponse, InvoiceEntity invoiceEntity,

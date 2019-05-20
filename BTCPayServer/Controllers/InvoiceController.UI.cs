@@ -83,7 +83,7 @@ namespace BTCPayServer.Controllers
                     Destination = h.GetAddress(),
                     PaymentMethod =
                         await _paymentMethodHandlers.First(handler => handler.CanHandle(h.GetPaymentMethodId()))
-                            .ToString(h.GetPaymentMethodId()),
+                            .ToString(true, h.GetPaymentMethodId()),
                     Current = !h.UnAssigned.HasValue
                 }))).ToArray();
 
@@ -106,7 +106,7 @@ namespace BTCPayServer.Controllers
                 var cryptoPayment = new InvoiceDetailsModel.CryptoPayment();
                 cryptoPayment.PaymentMethod = await _paymentMethodHandlers
                     .First(handler => handler.CanHandle(paymentMethodId))
-                    .ToString(paymentMethodId);
+                    .ToString(true, paymentMethodId);
                 cryptoPayment.Due = _CurrencyNameTable.DisplayFormatCurrency(accounting.Due.ToDecimal(MoneyUnit.BTC), paymentMethodId.CryptoCode);
                 cryptoPayment.Paid = _CurrencyNameTable.DisplayFormatCurrency(accounting.CryptoPaid.ToDecimal(MoneyUnit.BTC), paymentMethodId.CryptoCode);
                 cryptoPayment.Overpaid = _CurrencyNameTable.DisplayFormatCurrency(accounting.OverpaidHelper.ToDecimal(MoneyUnit.BTC), paymentMethodId.CryptoCode);

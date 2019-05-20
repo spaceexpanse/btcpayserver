@@ -34,7 +34,7 @@ namespace BTCPayServer.Payments
         object PreparePayment(ISupportedPaymentMethod supportedPaymentMethod, StoreData store, BTCPayNetwork network);
         
         bool CanHandle(PaymentMethodId paymentMethodId);
-        Task<string> ToString(PaymentMethodId paymentMethodId);
+        Task<string> ToString(bool pretty, PaymentMethodId paymentMethodId);
 
         Task PrepareInvoiceDto(InvoiceResponse invoiceResponse, InvoiceEntity invoiceEntity,
             InvoiceCryptoInfo invoiceCryptoInfo,
@@ -53,7 +53,7 @@ namespace BTCPayServer.Payments
         public abstract Task<IPaymentMethodDetails> CreatePaymentMethodDetails(T supportedPaymentMethod, PaymentMethod paymentMethod, StoreData store, BTCPayNetwork network, object preparePaymentObject);
         public abstract bool CanHandle(PaymentMethodId paymentMethodId);
 
-        public abstract  Task<string> ToString(PaymentMethodId paymentMethodId);
+        public abstract Task<string> ToString(bool pretty, PaymentMethodId paymentMethodId);
         
         public abstract Task PrepareInvoiceDto(InvoiceResponse invoiceResponse, InvoiceEntity invoiceEntity,
             InvoiceCryptoInfo invoiceCryptoInfo, PaymentMethodAccounting accounting, PaymentMethod info);
