@@ -76,7 +76,8 @@ namespace BTCPayServer.Payments
             PaymentTypes type = PaymentTypes.BTCLike;
             if (parts.Length == 2)
             {
-                switch (parts[1].ToLowerInvariant())
+                var typePart = parts[1].ToLowerInvariant();
+                switch (typePart)
                 {
                     case "btclike":
                     case "onchain":
@@ -87,7 +88,12 @@ namespace BTCPayServer.Payments
                         type = PaymentTypes.LightningLike;
                         break;
                     default:
-                        return false;
+                        if (!Enum.TryParse(typePart, out type))
+                        {
+                            return false;
+                        }
+
+                        break;
                 }
             }
             paymentMethodId = new PaymentMethodId(parts[0], type);
