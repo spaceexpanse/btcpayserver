@@ -102,7 +102,7 @@ namespace BTCPayServer.Controllers
 
             foreach (var data in invoice.GetPaymentMethods(null))
             {
-                var accounting = data.Calculate();
+                var accounting = data.Calculate(_paymentMethodHandlers);
                 var paymentMethodId = data.GetId();
                 var cryptoPayment = new InvoiceDetailsModel.CryptoPayment();
                 cryptoPayment.PaymentMethod = _paymentMethodHandlers
@@ -124,7 +124,7 @@ namespace BTCPayServer.Controllers
             foreach (var payment in invoice.GetPayments())
             {
                 var paymentNetwork = _NetworkProvider.GetNetwork(payment.GetCryptoCode());
-                var paymentData = payment.GetCryptoPaymentData();
+                var paymentData = payment.GetCryptoPaymentData(_paymentMethodHandlers);
                 if (paymentData is Payments.Bitcoin.BitcoinLikePaymentData onChainPaymentData)
                 {
                     var m = new InvoiceDetailsModel.Payment();
@@ -253,7 +253,7 @@ namespace BTCPayServer.Controllers
             var dto = await invoice.EntityToDTO(_NetworkProvider, _paymentMethodHandlers);
             var storeBlob = store.GetStoreBlob();
             var currency = invoice.ProductInformation.Currency;
-            var accounting = paymentMethod.Calculate();
+            var accounting = paymentMethod.Calculate(_paymentMethodHandlers);
 
             ChangellySettings changelly = (storeBlob.ChangellySettings != null && storeBlob.ChangellySettings.Enabled &&
                                            storeBlob.ChangellySettings.IsConfigured())
@@ -507,7 +507,7 @@ namespace BTCPayServer.Controllers
         [BitpayAPIConstraint(false)]
         public async Task<IActionResult> Export(string format, string searchTerm = null, int timezoneOffset = 0)
         {
-            var model = new InvoiceExport(_NetworkProvider, _CurrencyNameTable);
+            var model = new InvoiceExport(_NetworkProvider, _CurrencyNameTable, _paymentMethodHandlers);
 
             InvoiceQuery invoiceQuery = GetInvoiceQuery(searchTerm, timezoneOffset);
             invoiceQuery.Skip = 0;

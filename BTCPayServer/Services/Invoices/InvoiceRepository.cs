@@ -37,8 +37,9 @@ namespace BTCPayServer.Services.Invoices
         }
 
         private ApplicationDbContextFactory _ContextFactory;
+        private readonly IEnumerable<IPaymentMethodHandler> _paymentMethodHandlers;
         private CustomThreadPool _IndexerThread;
-        public InvoiceRepository(ApplicationDbContextFactory contextFactory, string dbreezePath)
+        public InvoiceRepository(ApplicationDbContextFactory contextFactory, string dbreezePath, IEnumerable<IPaymentMethodHandler> paymentMethodHandlers)
         {
             int retryCount = 0;
 retry:
@@ -49,6 +50,7 @@ retry:
             catch when (retryCount++ < 5) { goto retry; }
             _IndexerThread = new CustomThreadPool(1, "Invoice Indexer");
             _ContextFactory = contextFactory;
+            _paymentMethodHandlers = paymentMethodHandlers;
         }
 
         public async Task<bool> RemovePendingInvoice(string invoiceId)
@@ -162,7 +164,7 @@ retry:
                         Assigned = DateTimeOffset.UtcNow
                     }.SetAddress(paymentDestination, paymentMethod.GetId().ToString()));
                     textSearch.Add(paymentDestination);
-                    textSearch.Add(paymentMethod.Calculate().TotalDue.ToString());
+                    textSearch.Add(paymentMethod.Calculate(_paymentMethodHandlers).TotalDue.ToString());
                 }
                 context.PendingInvoices.Add(new PendingInvoiceData() { Id = invoice.Id });
                 await context.SaveChangesAsync().ConfigureAwait(false);
@@ -656,7 +658,7 @@ retry:
             {
                 foreach (var payment in payments)
                 {
-                    var paymentData = payment.GetCryptoPaymentData();
+                    var paymentData = payment.GetCryptoPaymentData(_paymentMethodHandlers);
                     var data = new PaymentData();
                     data.Id = paymentData.GetPaymentId();
                     data.Accounted = payment.Accounted;

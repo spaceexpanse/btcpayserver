@@ -271,7 +271,7 @@ namespace BTCPayServer.Controllers
                     paymentMethod.SetPaymentMethodDetails(paymentDetails);
                 }
 //TODO: abstract
-                if (await IsPaymentMethodAllowed(fetchingByCurrencyPair, supportedPaymentMethod, network, logs, storeBlob, paymentMethod, logPrefix)) return null;
+                if (await IsPaymentMethodAllowed(fetchingByCurrencyPair, supportedPaymentMethod, network, logs, storeBlob, paymentMethod, logPrefix, _paymentMethodHandlers)) return null;
                 ///////////////
 
 
@@ -298,7 +298,7 @@ namespace BTCPayServer.Controllers
 
         private static async Task<bool> IsPaymentMethodAllowed(Dictionary<CurrencyPair, Task<RateResult>> fetchingByCurrencyPair,
             ISupportedPaymentMethod supportedPaymentMethod, BTCPayNetwork network, InvoiceLogs logs, StoreBlob storeBlob,
-            PaymentMethod paymentMethod, string logPrefix)
+            PaymentMethod paymentMethod, string logPrefix, IEnumerable<IPaymentMethodHandler> paymentMethodHandlers)
         {
             Func<Money, Money, bool> compare = null;
             CurrencyValue limitValue = null;
@@ -324,7 +324,7 @@ namespace BTCPayServer.Controllers
                 if (limitValueRate.BidAsk != null)
                 {
                     var limitValueCrypto = Money.Coins(limitValue.Value / limitValueRate.BidAsk.Bid);
-                    if (compare(paymentMethod.Calculate().Due, limitValueCrypto))
+                    if (compare(paymentMethod.Calculate(paymentMethodHandlers).Due, limitValueCrypto))
                     {
                         logs.Write($"{logPrefix} {errorMessage}");
                         return true;

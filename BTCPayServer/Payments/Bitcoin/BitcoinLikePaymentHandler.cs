@@ -10,6 +10,7 @@ using BTCPayServer.Services.Invoices;
 using BTCPayServer.Services.Rates;
 using NBitcoin;
 using NBitpayClient;
+using Newtonsoft.Json;
 
 namespace BTCPayServer.Payments.Bitcoin
 {
@@ -75,7 +76,31 @@ namespace BTCPayServer.Payments.Bitcoin
 
         public override IEnumerable<PaymentMethodId> GetSupportedPaymentMethods()
         {
-            return _networkProvider.GetAll().Select(network => new PaymentMethodId(network.CryptoCode, PaymentTypes.BTCLike));
+            return _networkProvider.GetAll()
+                .Select(network => new PaymentMethodId(network.CryptoCode, PaymentTypes.BTCLike));
+        }
+
+        public override CryptoPaymentData GetCryptoPaymentData(PaymentEntity paymentEntity)
+        {
+            BitcoinLikePaymentData paymentData;
+            if (string.IsNullOrEmpty(paymentEntity.CryptoPaymentDataType))
+            {
+                // For invoices created when CryptoPaymentDataType was not existing, we just consider that it is a RBFed payment for safety
+                paymentData = new Payments.Bitcoin.BitcoinLikePaymentData();
+                paymentData.Outpoint = paymentEntity.Outpoint;
+                paymentData.Output = paymentEntity.Output;
+                paymentData.RBF = true;
+                paymentData.ConfirmationCount = 0;
+                paymentData.Legacy = true;
+                return paymentData;
+            }
+
+            paymentData =
+                JsonConvert.DeserializeObject<Payments.Bitcoin.BitcoinLikePaymentData>(paymentEntity.CryptoPaymentData);
+            // legacy
+            paymentData.Output = paymentEntity.Output;
+            paymentData.Outpoint = paymentEntity.Outpoint;
+            return paymentData;
         }
 
         private string GetPaymentMethodName(BTCPayNetwork network)

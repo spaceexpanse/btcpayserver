@@ -15,6 +15,7 @@ using NBXplorer.DerivationStrategy;
 using BTCPayServer.Payments;
 using NBitpayClient;
 using BTCPayServer.Payments.Bitcoin;
+using NUglify.Helpers;
 
 namespace BTCPayServer.Services.Invoices
 {
@@ -394,7 +395,7 @@ namespace BTCPayServer.Services.Invoices
             dto.MinerFees = new Dictionary<string, MinerFeeInfo>();
             foreach (var info in this.GetPaymentMethods(networkProvider))
             {
-                var accounting = info.Calculate();
+                var accounting = info.Calculate(paymentMethodHandlers);
                 var cryptoInfo = new NBitpayClient.InvoiceCryptoInfo();
                 var subtotalPrice = accounting.TotalDue - accounting.NetworkFee;
                 var cryptoCode = info.GetId().CryptoCode;
@@ -424,7 +425,7 @@ namespace BTCPayServer.Services.Invoices
 
                 cryptoInfo.Payments = GetPayments(info.Network).Select(entity =>
                 {
-                    var data = entity.GetCryptoPaymentData();
+                    var data = entity.GetCryptoPaymentData(paymentMethodHandlers);
                     return new InvoicePaymentInfo()
                     {
                         Id = data.GetPaymentId(),
@@ -798,7 +799,7 @@ namespace BTCPayServer.Services.Invoices
         [Obsolete("Use ((BitcoinLikeOnChainPaymentMethod)GetPaymentMethod()).DepositAddress")]
         public string DepositAddress { get; set; }
 
-        public PaymentMethodAccounting Calculate(Func<PaymentEntity, bool> paymentPredicate = null)
+        public PaymentMethodAccounting Calculate(IEnumerable<IPaymentMethodHandler>paymentMethodHandlers,  Func<PaymentEntity, bool> paymentPredicate = null)
         {
             paymentPredicate = paymentPredicate ?? new Func<PaymentEntity, bool>((p) => true);
             var paymentMethods = ParentEntity.GetPaymentMethods(null);
@@ -811,27 +812,26 @@ namespace BTCPayServer.Services.Invoices
             var totalDueNoNetworkCost = Money.Coins(Extensions.RoundUp(totalDue, precision));
             bool paidEnough = paid >= Extensions.RoundUp(totalDue, precision);
             int txRequired = 0;
-            var payments =
-                ParentEntity.GetPayments()
+
+            ParentEntity.GetPayments()
                 .Where(p => p.Accounted && paymentPredicate(p))
                 .OrderBy(p => p.ReceivedTime)
-                .Select(_ =>
+                .ForEach(_ =>
                 {
-                    var txFee = _.GetValue(paymentMethods, GetId(), _.NetworkFee);
-                    paid += _.GetValue(paymentMethods, GetId());
+                    var txFee = _.GetValue(paymentMethodHandlers, paymentMethods, GetId(), _.NetworkFee);
+                    paid += _.GetValue(paymentMethodHandlers, paymentMethods, GetId());
                     if (!paidEnough)
                     {
                         totalDue += txFee;
                     }
+
                     paidEnough |= Extensions.RoundUp(paid, precision) >= Extensions.RoundUp(totalDue, precision);
                     if (GetId() == _.GetPaymentMethodId())
                     {
-                        cryptoPaid += _.GetCryptoPaymentData().GetValue();
+                        cryptoPaid += _.GetCryptoPaymentData(paymentMethodHandlers).GetValue();
                         txRequired++;
                     }
-                    return _;
-                })
-                .ToArray();
+                });
 
             var accounting = new PaymentMethodAccounting();
             accounting.TxCount = txRequired;
@@ -901,36 +901,10 @@ namespace BTCPayServer.Services.Invoices
         public string CryptoPaymentDataType { get; set; }
 
 
-        public CryptoPaymentData GetCryptoPaymentData()
+        public CryptoPaymentData GetCryptoPaymentData(IEnumerable<IPaymentMethodHandler> paymentMethodHandlers)
         {
-#pragma warning disable CS0618
-            if (string.IsNullOrEmpty(CryptoPaymentDataType))
-            {
-                // For invoices created when CryptoPaymentDataType was not existing, we just consider that it is a RBFed payment for safety
-                var paymentData = new Payments.Bitcoin.BitcoinLikePaymentData();
-                paymentData.Outpoint = Outpoint;
-                paymentData.Output = Output;
-                paymentData.RBF = true;
-                paymentData.ConfirmationCount = 0;
-                paymentData.Legacy = true;
-                return paymentData;
-            }
-            //Todo: Abstract
-            if (GetPaymentMethodId().PaymentType == PaymentTypes.BTCLike)
-            {
-                var paymentData = JsonConvert.DeserializeObject<Payments.Bitcoin.BitcoinLikePaymentData>(CryptoPaymentData);
-                // legacy
-                paymentData.Output = Output;
-                paymentData.Outpoint = Outpoint;
-                return paymentData;
-            }
-            if (GetPaymentMethodId().PaymentType == PaymentTypes.LightningLike)
-            {
-                return JsonConvert.DeserializeObject<Payments.Lightning.LightningLikePaymentData>(CryptoPaymentData);
-            }
-
-            throw new NotSupportedException(nameof(CryptoPaymentDataType) + " does not support " + CryptoPaymentDataType);
-#pragma warning restore CS0618
+            var paymentMethodId = GetPaymentMethodId();
+            return paymentMethodHandlers.GetCorrectHandler(paymentMethodId).GetCryptoPaymentData(this);
         }
 
         public PaymentEntity SetCryptoPaymentData(CryptoPaymentData cryptoPaymentData)
@@ -948,9 +922,10 @@ namespace BTCPayServer.Services.Invoices
 #pragma warning restore CS0618
             return this;
         }
-        internal decimal GetValue(PaymentMethodDictionary paymentMethods, PaymentMethodId paymentMethodId, decimal? value = null)
+        internal decimal GetValue(IEnumerable<IPaymentMethodHandler>paymentMethodHandlers, PaymentMethodDictionary paymentMethods, PaymentMethodId paymentMethodId, decimal? value = null)
         {
-            value = value ?? this.GetCryptoPaymentData().GetValue();
+            
+            value = value ?? this.GetCryptoPaymentData(paymentMethodHandlers).GetValue();
             var to = paymentMethodId;
             var from = this.GetPaymentMethodId();
             if (to == from)

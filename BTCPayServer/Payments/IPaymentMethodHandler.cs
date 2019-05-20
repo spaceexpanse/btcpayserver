@@ -46,6 +46,8 @@ namespace BTCPayServer.Payments
         string GetPaymentMethodName(PaymentMethodId paymentMethodId);
 
         IEnumerable<PaymentMethodId> GetSupportedPaymentMethods();
+
+        CryptoPaymentData GetCryptoPaymentData(PaymentEntity paymentEntity);
     }
 
     public interface IPaymentMethodHandler<T> : IPaymentMethodHandler where T : ISupportedPaymentMethod
@@ -68,6 +70,7 @@ namespace BTCPayServer.Payments
         public abstract string GetCryptoImage(PaymentMethodId paymentMethodId);
         public abstract string GetPaymentMethodName(PaymentMethodId paymentMethodId);
         public abstract IEnumerable<PaymentMethodId> GetSupportedPaymentMethods();
+        public abstract CryptoPaymentData GetCryptoPaymentData(PaymentEntity paymentEntity);
 
 
         public virtual object PreparePayment(T supportedPaymentMethod, StoreData store, BTCPayNetwork network)

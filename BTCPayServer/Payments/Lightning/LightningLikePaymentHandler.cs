@@ -14,6 +14,7 @@ using BTCPayServer.Services.Invoices;
 using BTCPayServer.Services;
 using NBitcoin;
 using NBitpayClient;
+using Newtonsoft.Json;
 
 namespace BTCPayServer.Payments.Lightning
 {
@@ -149,7 +150,12 @@ namespace BTCPayServer.Payments.Lightning
         {
             return _networkProvider.GetAll().Select(network => new PaymentMethodId(network.CryptoCode, PaymentTypes.LightningLike));
         }
-        
+
+        public override CryptoPaymentData GetCryptoPaymentData(PaymentEntity paymentEntity)
+        {
+            return JsonConvert.DeserializeObject<Payments.Lightning.LightningLikePaymentData>(paymentEntity.CryptoPaymentData);
+        }
+
         public override string ToString()
         {
             return "Off-Chain";
