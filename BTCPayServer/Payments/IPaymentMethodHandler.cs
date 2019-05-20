@@ -36,9 +36,6 @@ namespace BTCPayServer.Payments
         bool CanHandle(PaymentMethodId paymentMethodId);
         Task<string> ToString(PaymentMethodId paymentMethodId);
 
-        Task PrepareInvoiceCryptoInfo(InvoiceCryptoInfo invoiceCryptoInfo, InvoiceEntity invoiceEntity,
-            PaymentMethodAccounting accounting);
-        
         Task PrepareInvoiceDto(InvoiceResponse invoiceResponse, InvoiceEntity invoiceEntity,
             InvoiceCryptoInfo invoiceCryptoInfo,
             PaymentMethodAccounting accounting, PaymentMethod info);
@@ -57,10 +54,7 @@ namespace BTCPayServer.Payments
         public abstract bool CanHandle(PaymentMethodId paymentMethodId);
 
         public abstract  Task<string> ToString(PaymentMethodId paymentMethodId);
-
-        public abstract Task PrepareInvoiceCryptoInfo(InvoiceCryptoInfo invoiceCryptoInfo, InvoiceEntity invoiceEntity,
-            PaymentMethodAccounting accounting);
-
+        
         public abstract Task PrepareInvoiceDto(InvoiceResponse invoiceResponse, InvoiceEntity invoiceEntity,
             InvoiceCryptoInfo invoiceCryptoInfo, PaymentMethodAccounting accounting, PaymentMethod info);
 

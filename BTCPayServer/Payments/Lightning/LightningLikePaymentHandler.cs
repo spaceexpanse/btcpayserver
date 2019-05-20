@@ -138,20 +138,14 @@ namespace BTCPayServer.Payments.Lightning
             return Task.FromResult($"{paymentMethodId.CryptoCode} (Off-Chain)");
         }
 
-        public override Task PrepareInvoiceCryptoInfo(InvoiceCryptoInfo invoiceCryptoInfo, InvoiceEntity invoiceEntity,
-            PaymentMethodAccounting accounting)
+        public override Task PrepareInvoiceDto(InvoiceResponse invoiceResponse, InvoiceEntity invoiceEntity,
+            InvoiceCryptoInfo invoiceCryptoInfo, PaymentMethodAccounting accounting, PaymentMethod info)
         {
             invoiceCryptoInfo.PaymentUrls = new InvoicePaymentUrls()
             {
                 BOLT11 = $"lightning:{invoiceCryptoInfo.Address}"
             };
             return Task.CompletedTask;
-        }
-
-        public override Task PrepareInvoiceDto(InvoiceResponse invoiceResponse, InvoiceEntity invoiceEntity,
-            InvoiceCryptoInfo invoiceCryptoInfo, PaymentMethodAccounting accounting, PaymentMethod info)
-        {
-          return Task.CompletedTask
         }
     }
 }
