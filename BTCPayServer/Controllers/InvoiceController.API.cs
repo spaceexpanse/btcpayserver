@@ -56,7 +56,7 @@ namespace BTCPayServer.Controllers
             })).FirstOrDefault();
             if (invoice == null)
                 throw new BitpayHttpException(404, "Object not found");
-            var resp = invoice.EntityToDTO(_NetworkProvider, _paymentMethodHandlers);
+            var resp = await invoice.EntityToDTO(_NetworkProvider, _paymentMethodHandlers);
             return new DataWrapper<InvoiceResponse>(resp);
         }
         [HttpGet]
@@ -86,8 +86,8 @@ namespace BTCPayServer.Controllers
                 StoreId = new[] { this.HttpContext.GetStoreData().Id }
             };
 
-            var entities = (await _InvoiceRepository.GetInvoices(query))
-                            .Select((o) => o.EntityToDTO(_NetworkProvider, _paymentMethodHandlers)).ToArray();
+            var entities = await Task.WhenAll( (await _InvoiceRepository.GetInvoices(query))
+                            .Select(async (o) => await o.EntityToDTO(_NetworkProvider, _paymentMethodHandlers)).ToArray());
 
             return DataWrapper.Create(entities);
         }

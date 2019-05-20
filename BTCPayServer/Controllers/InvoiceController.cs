@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -223,7 +223,7 @@ namespace BTCPayServer.Controllers
                 await _InvoiceRepository.AddInvoiceLogs(entity.Id, logs);
             });
             _EventAggregator.Publish(new Events.InvoiceEvent(entity, 1001, InvoiceEvent.Created));
-            var resp = entity.EntityToDTO(_NetworkProvider, _paymentMethodHandlers);
+            var resp = await entity.EntityToDTO(_NetworkProvider, _paymentMethodHandlers);
             return new DataWrapper<InvoiceResponse>(resp) { Facade = "pos/invoice" };
         }
 

@@ -249,7 +249,7 @@ namespace BTCPayServer.Controllers
 
             var paymentMethod = invoice.GetPaymentMethod(paymentMethodId, _NetworkProvider);
             var paymentMethodDetails = paymentMethod.GetPaymentMethodDetails();
-            var dto = invoice.EntityToDTO(_NetworkProvider, _paymentMethodHandlers);
+            var dto = await invoice.EntityToDTO(_NetworkProvider, _paymentMethodHandlers);
             var cryptoInfo = dto.CryptoInfo.First(o => o.GetpaymentMethodId() == paymentMethodId);
             var storeBlob = store.GetStoreBlob();
             var currency = invoice.ProductInformation.Currency;

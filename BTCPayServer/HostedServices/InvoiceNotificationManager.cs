@@ -44,6 +44,7 @@ namespace BTCPayServer.HostedServices
         InvoiceRepository _InvoiceRepository;
         BTCPayNetworkProvider _NetworkProvider;
         private readonly EmailSenderFactory _EmailSenderFactory;
+        private readonly IEnumerable<IPaymentMethodHandler> _paymentMethodHandlers;
 
         public InvoiceNotificationManager(
             IHttpClientFactory httpClientFactory,
@@ -52,7 +53,8 @@ namespace BTCPayServer.HostedServices
             InvoiceRepository invoiceRepository,
             BTCPayNetworkProvider networkProvider,
             ILogger<InvoiceNotificationManager> logger,
-            EmailSenderFactory emailSenderFactory)
+            EmailSenderFactory emailSenderFactory, 
+            IEnumerable<IPaymentMethodHandler> paymentMethodHandlers)
         {
             _Client = httpClientFactory.CreateClient();
             _JobClient = jobClient;
@@ -60,11 +62,12 @@ namespace BTCPayServer.HostedServices
             _InvoiceRepository = invoiceRepository;
             _NetworkProvider = networkProvider;
             _EmailSenderFactory = emailSenderFactory;
+            _paymentMethodHandlers = paymentMethodHandlers;
         }
 
-        void Notify(InvoiceEntity invoice, InvoiceEvent invoiceEvent, bool extendedNotification)
+        async Task Notify(InvoiceEntity invoice, InvoiceEvent invoiceEvent, bool extendedNotification)
         {
-            var dto = invoice.EntityToDTO(_NetworkProvider);
+            var dto = await invoice.EntityToDTO(_NetworkProvider, _paymentMethodHandlers);
             var notification = new InvoicePaymentNotificationEventWrapper()
             {
                 Data = new InvoicePaymentNotification()
@@ -327,17 +330,17 @@ namespace BTCPayServer.HostedServices
                        e.Name == InvoiceEvent.Completed ||
                        e.Name == InvoiceEvent.ExpiredPaidPartial
                      )
-                        Notify(invoice, e, false);
+                        await Notify(invoice, e, false);
                 }
 
                 if (e.Name == InvoiceEvent.Confirmed)
                 {
-                    Notify(invoice, e, false);
+                    await Notify(invoice, e, false);
                 }
 
                 if (invoice.ExtendedNotifications)
                 {
-                    Notify(invoice, e, true);
+                    await Notify(invoice, e, true);
                 }
             }));
 
