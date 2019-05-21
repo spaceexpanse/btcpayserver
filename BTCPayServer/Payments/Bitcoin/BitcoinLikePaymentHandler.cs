@@ -119,12 +119,11 @@ namespace BTCPayServer.Payments.Bitcoin
                 paymentData.ConfirmationCount = 0;
                 paymentData.Legacy = true;
                 return paymentData;
-#pragma warning restore CS0618
+
             }
 
             paymentData =
                 JsonConvert.DeserializeObject<BitcoinLikePaymentData>(paymentEntity.CryptoPaymentData);
-#pragma warning disable CS0618
             // legacy
             paymentData.Output = paymentEntity.Output;
             paymentData.Outpoint = paymentEntity.Outpoint;
