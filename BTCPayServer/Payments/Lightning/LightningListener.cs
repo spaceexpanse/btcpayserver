@@ -25,6 +25,7 @@ namespace BTCPayServer.Payments.Lightning
         private readonly IMemoryCache _memoryCache;
         BTCPayNetworkProvider _NetworkProvider;
         private readonly LightningClientFactoryService lightningClientFactory;
+        private readonly LightningLikePaymentHandler _lightningLikePaymentHandler;
         Channel<string> _CheckInvoices = Channel.CreateUnbounded<string>();
         Task _CheckingInvoice;
         Dictionary<(string, string), LightningInstanceListener> _InstanceListeners = new Dictionary<(string, string), LightningInstanceListener>();
@@ -34,13 +35,14 @@ namespace BTCPayServer.Payments.Lightning
                               IMemoryCache memoryCache,
                               BTCPayNetworkProvider networkProvider,
                               LightningClientFactoryService lightningClientFactory,
-                              IHttpClientFactory httpClientFactory)
+                              IHttpClientFactory httpClientFactory, LightningLikePaymentHandler lightningLikePaymentHandler)
         {
             _Aggregator = aggregator;
             _InvoiceRepository = invoiceRepository;
             _memoryCache = memoryCache;
             _NetworkProvider = networkProvider;
             this.lightningClientFactory = lightningClientFactory;
+            _lightningLikePaymentHandler = lightningLikePaymentHandler;
         }
 
         async Task CheckingInvoice(CancellationToken cancellation)
@@ -99,7 +101,7 @@ namespace BTCPayServer.Payments.Lightning
                 foreach (var paymentMethod in invoice.GetPaymentMethods(_NetworkProvider)
                                                               .Where(c => c.GetId().PaymentType == PaymentTypes.LightningLike))
                 {
-                    var lightningMethod = paymentMethod.GetPaymentMethodDetails() as LightningLikePaymentMethodDetails;
+                    var lightningMethod = paymentMethod.GetPaymentMethodDetails(new []{ _lightningLikePaymentHandler}) as LightningLikePaymentMethodDetails;
                     if (lightningMethod == null)
                         continue;
                     var lightningSupportedMethod = invoice.GetSupportedPaymentMethod<LightningSupportedPaymentMethod>(_NetworkProvider)

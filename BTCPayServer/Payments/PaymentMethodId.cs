@@ -62,13 +62,11 @@ namespace BTCPayServer.Payments
 
         public override string ToString()
         {
-            //TODO: abstract
             return PaymentType == PaymentTypes.BTCLike ? CryptoCode : $"{CryptoCode}_{PaymentType}";
         }
         
         public static bool TryParse(string str, out PaymentMethodId paymentMethodId)
         {
-            //Todo: Abstract
             paymentMethodId = null;
             var parts = str.Split('_', StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length == 0 || parts.Length > 2)

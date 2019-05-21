@@ -399,7 +399,7 @@ namespace BTCPayServer.Services.Invoices
                 var cryptoInfo = new NBitpayClient.InvoiceCryptoInfo();
                 var subtotalPrice = accounting.TotalDue - accounting.NetworkFee;
                 var cryptoCode = info.GetId().CryptoCode;
-                var address = info.GetPaymentMethodDetails()?.GetPaymentDestination();
+                var address = info.GetPaymentMethodDetails(paymentMethodHandlers)?.GetPaymentDestination();
                 var exrates = new Dictionary<string, decimal>
                 {
                     { ProductInformation.Currency, cryptoInfo.Rate }
@@ -738,7 +738,7 @@ namespace BTCPayServer.Services.Invoices
         [Obsolete("Use GetPaymentMethodDetails() instead")]
         [JsonProperty(PropertyName = "paymentMethod")]
         public JObject PaymentMethodDetails { get; set; }
-        public IPaymentMethodDetails GetPaymentMethodDetails()
+        public IPaymentMethodDetails GetPaymentMethodDetails(IEnumerable<IPaymentMethodHandler> paymentMethodHandlers)
         {
 #pragma warning disable CS0618 // Type or member is obsolete
             // Legacy, old code does not have PaymentMethods
@@ -838,7 +838,7 @@ namespace BTCPayServer.Services.Invoices
             if (!paidEnough)
             {
                 txRequired++;
-                totalDue += GetTxFee();
+                totalDue += GetTxFee(paymentMethodHandlers);
             }
 
             accounting.TotalDue = Money.Coins(Extensions.RoundUp(totalDue, precision));
@@ -853,9 +853,9 @@ namespace BTCPayServer.Services.Invoices
             return accounting;
         }
 
-        private decimal GetTxFee()
+        private decimal GetTxFee(IEnumerable<IPaymentMethodHandler> paymentMethodHandlers)
         {
-            var method = GetPaymentMethodDetails();
+            var method = GetPaymentMethodDetails(paymentMethodHandlers);
             if (method == null)
                 return 0.0m;
             return method.GetNextNetworkFee();

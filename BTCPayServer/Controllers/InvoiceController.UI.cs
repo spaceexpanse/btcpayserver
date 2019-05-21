@@ -111,8 +111,9 @@ namespace BTCPayServer.Controllers
                 cryptoPayment.Due = _CurrencyNameTable.DisplayFormatCurrency(accounting.Due.ToDecimal(MoneyUnit.BTC), paymentMethodId.CryptoCode);
                 cryptoPayment.Paid = _CurrencyNameTable.DisplayFormatCurrency(accounting.CryptoPaid.ToDecimal(MoneyUnit.BTC), paymentMethodId.CryptoCode);
                 cryptoPayment.Overpaid = _CurrencyNameTable.DisplayFormatCurrency(accounting.OverpaidHelper.ToDecimal(MoneyUnit.BTC), paymentMethodId.CryptoCode);
-
-                var onchainMethod = data.GetPaymentMethodDetails() as Payments.Bitcoin.BitcoinLikeOnChainPaymentMethod;
+//TODO: abstract
+                var onchainMethod = data.GetPaymentMethodDetails(_paymentMethodHandlers) as Payments.Bitcoin.BitcoinLikeOnChainPaymentMethod;
+                
                 if (onchainMethod != null)
                 {
                     cryptoPayment.Address = onchainMethod.DepositAddress;
@@ -249,7 +250,7 @@ namespace BTCPayServer.Controllers
             }
 
             var paymentMethod = invoice.GetPaymentMethod(paymentMethodId, _NetworkProvider);
-            var paymentMethodDetails = paymentMethod.GetPaymentMethodDetails();
+            var paymentMethodDetails = paymentMethod.GetPaymentMethodDetails(_paymentMethodHandlers);
             var dto = await invoice.EntityToDTO(_NetworkProvider, _paymentMethodHandlers);
             var storeBlob = store.GetStoreBlob();
             var currency = invoice.ProductInformation.Currency;
