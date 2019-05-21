@@ -89,7 +89,7 @@ namespace BTCPayServer.Payments.Bitcoin
             {
                 var limitValueCrypto = Money.Coins(storeBlob.OnChainMinValue.Value / limitValueRate.BidAsk.Bid);
 
-                if (amount < limitValueCrypto)
+                if (amount > limitValueCrypto)
                 {
                     return null;
                 }
