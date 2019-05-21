@@ -29,8 +29,6 @@ namespace BTCPayServer.Payments.Bitcoin
                                         BTCPayServerEnvironment environment,
                                          Services.Wallets.BTCPayWalletProvider walletProvider)
         {
-            if (provider == null)
-                throw new ArgumentNullException(nameof(provider));
             _ExplorerProvider = provider;
             _networkProvider = networkProvider;
             this._FeeRateProviderFactory = feeRateProviderFactory;
