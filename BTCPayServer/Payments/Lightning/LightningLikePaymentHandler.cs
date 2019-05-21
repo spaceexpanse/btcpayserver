@@ -177,7 +177,9 @@ namespace BTCPayServer.Payments.Lightning
         }
         public override CryptoPaymentData GetCryptoPaymentData(PaymentEntity paymentEntity)
         {
-            return JsonConvert.DeserializeObject<Payments.Lightning.LightningLikePaymentData>(paymentEntity.CryptoPaymentData);
+#pragma warning disable CS0618
+            return JsonConvert.DeserializeObject<LightningLikePaymentData>(paymentEntity.CryptoPaymentData);
+#pragma warning restore CS0618
         }
 
         public override string ToString()

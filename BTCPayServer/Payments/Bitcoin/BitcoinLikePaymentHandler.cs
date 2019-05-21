@@ -108,7 +108,7 @@ namespace BTCPayServer.Payments.Bitcoin
             BitcoinLikePaymentData paymentData;
             if (string.IsNullOrEmpty(paymentEntity.CryptoPaymentDataType))
             {
-#pragma warning disable 618
+#pragma warning disable CS0618
                 // For invoices created when CryptoPaymentDataType was not existing, we just consider that it is a RBFed payment for safety
                 paymentData = new BitcoinLikePaymentData();
                 paymentData.Outpoint = paymentEntity.Outpoint;
@@ -117,16 +117,16 @@ namespace BTCPayServer.Payments.Bitcoin
                 paymentData.ConfirmationCount = 0;
                 paymentData.Legacy = true;
                 return paymentData;
-#pragma warning restore 618
+#pragma warning restore CS0618
             }
 
             paymentData =
                 JsonConvert.DeserializeObject<BitcoinLikePaymentData>(paymentEntity.CryptoPaymentData);
-#pragma warning disable 618
+#pragma warning disable CS0618
             // legacy
             paymentData.Output = paymentEntity.Output;
             paymentData.Outpoint = paymentEntity.Outpoint;
-#pragma warning restore 618
+#pragma warning restore CS0618
             return paymentData;
         }
 
