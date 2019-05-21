@@ -102,7 +102,7 @@ namespace BTCPayServer.Controllers
 
             foreach (var data in invoice.GetPaymentMethods(null))
             {
-                var accounting = data.Calculate(_paymentMethodHandlers);
+                var accounting = data.Calculate();
                 var paymentMethodId = data.GetId();
                 var cryptoPayment = new InvoiceDetailsModel.CryptoPayment();
                 cryptoPayment.PaymentMethod = _paymentMethodHandlers
@@ -112,7 +112,7 @@ namespace BTCPayServer.Controllers
                 cryptoPayment.Paid = _CurrencyNameTable.DisplayFormatCurrency(accounting.CryptoPaid.ToDecimal(MoneyUnit.BTC), paymentMethodId.CryptoCode);
                 cryptoPayment.Overpaid = _CurrencyNameTable.DisplayFormatCurrency(accounting.OverpaidHelper.ToDecimal(MoneyUnit.BTC), paymentMethodId.CryptoCode);
 //TODO: abstract
-                var onchainMethod = data.GetPaymentMethodDetails(_paymentMethodHandlers) as Payments.Bitcoin.BitcoinLikeOnChainPaymentMethod;
+                var onchainMethod = data.GetPaymentMethodDetails() as Payments.Bitcoin.BitcoinLikeOnChainPaymentMethod;
                 
                 if (onchainMethod != null)
                 {
@@ -250,11 +250,11 @@ namespace BTCPayServer.Controllers
             }
 
             var paymentMethod = invoice.GetPaymentMethod(paymentMethodId, _NetworkProvider);
-            var paymentMethodDetails = paymentMethod.GetPaymentMethodDetails(_paymentMethodHandlers);
+            var paymentMethodDetails = paymentMethod.GetPaymentMethodDetails();
             var dto = await invoice.EntityToDTO(_NetworkProvider, _paymentMethodHandlers);
             var storeBlob = store.GetStoreBlob();
             var currency = invoice.ProductInformation.Currency;
-            var accounting = paymentMethod.Calculate(_paymentMethodHandlers);
+            var accounting = paymentMethod.Calculate();
 
             ChangellySettings changelly = (storeBlob.ChangellySettings != null && storeBlob.ChangellySettings.Enabled &&
                                            storeBlob.ChangellySettings.IsConfigured())

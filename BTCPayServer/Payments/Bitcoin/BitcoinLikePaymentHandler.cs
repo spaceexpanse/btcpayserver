@@ -105,10 +105,12 @@ namespace BTCPayServer.Payments.Bitcoin
 
         public override CryptoPaymentData GetCryptoPaymentData(PaymentEntity paymentEntity)
         {
+#pragma warning disable CS0618
+            
             BitcoinLikePaymentData paymentData;
             if (string.IsNullOrEmpty(paymentEntity.CryptoPaymentDataType))
             {
-#pragma warning disable CS0618
+
                 // For invoices created when CryptoPaymentDataType was not existing, we just consider that it is a RBFed payment for safety
                 paymentData = new BitcoinLikePaymentData();
                 paymentData.Outpoint = paymentEntity.Outpoint;
@@ -193,7 +195,7 @@ namespace BTCPayServer.Payments.Bitcoin
             
                 var minerInfo = new MinerFeeInfo();
                 minerInfo.TotalFee = accounting.NetworkFee.Satoshi;
-                minerInfo.SatoshiPerBytes = ((BitcoinLikeOnChainPaymentMethod)info.GetPaymentMethodDetails(new []{this})).FeeRate.GetFee(1).Satoshi;
+                minerInfo.SatoshiPerBytes = ((BitcoinLikeOnChainPaymentMethod)info.GetPaymentMethodDetails()).FeeRate.GetFee(1).Satoshi;
                 invoiceResponse.MinerFees.TryAdd(invoiceCryptoInfo.CryptoCode, minerInfo);
                 invoiceCryptoInfo.PaymentUrls = new NBitpayClient.InvoicePaymentUrls()
                 {

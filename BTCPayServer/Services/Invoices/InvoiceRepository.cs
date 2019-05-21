@@ -149,7 +149,7 @@ retry:
                 {
                     if (paymentMethod.Network == null)
                         throw new InvalidOperationException("CryptoCode unsupported");
-                    var paymentDestination = paymentMethod.GetPaymentMethodDetails(_paymentMethodHandlers).GetPaymentDestination();
+                    var paymentDestination = paymentMethod.GetPaymentMethodDetails().GetPaymentDestination();
 
                     string address = GetDestination(paymentMethod, paymentMethod.Network.NBitcoinNetwork);
                     context.AddressInvoices.Add(new AddressInvoiceData()
@@ -164,7 +164,7 @@ retry:
                         Assigned = DateTimeOffset.UtcNow
                     }.SetAddress(paymentDestination, paymentMethod.GetId().ToString()));
                     textSearch.Add(paymentDestination);
-                    textSearch.Add(paymentMethod.Calculate(_paymentMethodHandlers).TotalDue.ToString());
+                    textSearch.Add(paymentMethod.Calculate().TotalDue.ToString());
                 }
                 context.PendingInvoices.Add(new PendingInvoiceData() { Id = invoice.Id });
                 await context.SaveChangesAsync().ConfigureAwait(false);
@@ -206,10 +206,10 @@ retry:
             // For legacy reason, BitcoinLikeOnChain is putting the hashes of addresses in database
             if (paymentMethod.GetId().PaymentType == Payments.PaymentTypes.BTCLike)
             {
-                return ((Payments.Bitcoin.BitcoinLikeOnChainPaymentMethod)paymentMethod.GetPaymentMethodDetails(_paymentMethodHandlers)).GetDepositAddress(network).ScriptPubKey.Hash.ToString();
+                return ((Payments.Bitcoin.BitcoinLikeOnChainPaymentMethod)paymentMethod.GetPaymentMethodDetails()).GetDepositAddress(network).ScriptPubKey.Hash.ToString();
             }
             ///////////////
-            return paymentMethod.GetPaymentMethodDetails(_paymentMethodHandlers).GetPaymentDestination();
+            return paymentMethod.GetPaymentMethodDetails().GetPaymentDestination();
         }
 
         public async Task<bool> NewAddress(string invoiceId, Payments.Bitcoin.BitcoinLikeOnChainPaymentMethod paymentMethod, BTCPayNetwork network)
@@ -225,7 +225,7 @@ retry:
                 if (currencyData == null)
                     return false;
 
-                var existingPaymentMethod = (Payments.Bitcoin.BitcoinLikeOnChainPaymentMethod)currencyData.GetPaymentMethodDetails(_paymentMethodHandlers);
+                var existingPaymentMethod = (Payments.Bitcoin.BitcoinLikeOnChainPaymentMethod)currencyData.GetPaymentMethodDetails();
                 if (existingPaymentMethod.GetPaymentDestination() != null)
                 {
                     MarkUnassigned(invoiceId, invoiceEntity, context, currencyData.GetId());
@@ -287,7 +287,7 @@ retry:
                     continue;
                 var historical = new HistoricalAddressInvoiceData();
                 historical.InvoiceDataId = invoiceId;
-                historical.SetAddress(address.GetPaymentMethodDetails(_paymentMethodHandlers).GetPaymentDestination(), address.GetId().ToString());
+                historical.SetAddress(address.GetPaymentMethodDetails().GetPaymentDestination(), address.GetId().ToString());
                 historical.UnAssigned = DateTimeOffset.UtcNow;
                 context.Attach(historical);
                 context.Entry(historical).Property(o => o.UnAssigned).IsModified = true;
@@ -397,6 +397,7 @@ retry:
         private InvoiceEntity ToEntity(Data.InvoiceData invoice)
         {
             var entity = ToObject<InvoiceEntity>(invoice.Blob, null);
+            entity.PaymentMethodHandlers = _paymentMethodHandlers;
             PaymentMethodDictionary paymentMethods = null;
 #pragma warning disable CS0618
             entity.Payments = invoice.Payments.Select(p =>
@@ -410,7 +411,7 @@ retry:
                 {
                     if (paymentMethods == null)
                         paymentMethods = entity.GetPaymentMethods(null);
-                    var paymentMethodDetails = paymentMethods.TryGet(paymentEntity.GetPaymentMethodId())?.GetPaymentMethodDetails(_paymentMethodHandlers);
+                    var paymentMethodDetails = paymentMethods.TryGet(paymentEntity.GetPaymentMethodId())?.GetPaymentMethodDetails();
                     if (paymentMethodDetails != null) // == null should never happen, but we never know.
                         paymentEntity.NetworkFee = paymentMethodDetails.GetNextNetworkFee();
                 }
@@ -608,8 +609,9 @@ retry:
                 if (invoice == null)
                     return null;
                 InvoiceEntity invoiceEntity = ToObject<InvoiceEntity>(invoice.Blob, network.NBitcoinNetwork);
+                invoiceEntity.PaymentMethodHandlers = _paymentMethodHandlers;
                 PaymentMethod paymentMethod = invoiceEntity.GetPaymentMethod(new PaymentMethodId(network.CryptoCode, paymentData.GetPaymentType()), null);
-                IPaymentMethodDetails paymentMethodDetails = paymentMethod.GetPaymentMethodDetails(_paymentMethodHandlers);
+                IPaymentMethodDetails paymentMethodDetails = paymentMethod.GetPaymentMethodDetails();
                 PaymentEntity entity = new PaymentEntity
                 {
                     Version = 1,

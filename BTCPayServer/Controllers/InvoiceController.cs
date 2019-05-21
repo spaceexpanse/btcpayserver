@@ -74,6 +74,7 @@ namespace BTCPayServer.Controllers
             logs.Write("Creation of invoice starting");
             var entity = new InvoiceEntity
             {
+                PaymentMethodHandlers = _paymentMethodHandlers,
                 Version = InvoiceEntity.Lastest_Version,
                 InvoiceTime = DateTimeOffset.UtcNow
             };
@@ -274,7 +275,7 @@ namespace BTCPayServer.Controllers
                 var errorMessage = await
                     _paymentMethodHandlers.GetCorrectHandler(supportedPaymentMethod.PaymentId)
                         .IsPaymentMethodAllowedBasedOnInvoiceAmount(storeBlob, fetchingByCurrencyPair,
-                            paymentMethod.Calculate(_paymentMethodHandlers).Due, supportedPaymentMethod.PaymentId);
+                            paymentMethod.Calculate().Due, supportedPaymentMethod.PaymentId);
                 if (errorMessage != null)
                 {
                     logs.Write($"{logPrefix} {errorMessage}");

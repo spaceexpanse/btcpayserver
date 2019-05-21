@@ -365,9 +365,9 @@ namespace BTCPayServer.Payments.Bitcoin
                 return null;
             var paymentMethod = invoice.GetPaymentMethod(wallet.Network, PaymentTypes.BTCLike, _ExplorerClients.NetworkProviders);
             if (paymentMethod != null &&
-                paymentMethod.GetPaymentMethodDetails(_paymentMethodHandlers) is BitcoinLikeOnChainPaymentMethod btc &&
+                paymentMethod.GetPaymentMethodDetails() is BitcoinLikeOnChainPaymentMethod btc &&
                 btc.GetDepositAddress(wallet.Network.NBitcoinNetwork).ScriptPubKey == paymentData.Output.ScriptPubKey &&
-                paymentMethod.Calculate(_paymentMethodHandlers).Due > Money.Zero)
+                paymentMethod.Calculate().Due > Money.Zero)
             {
                 var address = await wallet.ReserveAddressAsync(strategy);
                 btc.DepositAddress = address.ToString();
