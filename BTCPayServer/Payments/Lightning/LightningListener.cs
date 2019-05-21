@@ -25,7 +25,6 @@ namespace BTCPayServer.Payments.Lightning
         private readonly IMemoryCache _memoryCache;
         BTCPayNetworkProvider _NetworkProvider;
         private readonly LightningClientFactoryService lightningClientFactory;
-        private readonly LightningLikePaymentHandler _lightningLikePaymentHandler;
         Channel<string> _CheckInvoices = Channel.CreateUnbounded<string>();
         Task _CheckingInvoice;
         Dictionary<(string, string), LightningInstanceListener> _InstanceListeners = new Dictionary<(string, string), LightningInstanceListener>();
@@ -34,15 +33,13 @@ namespace BTCPayServer.Payments.Lightning
                               InvoiceRepository invoiceRepository,
                               IMemoryCache memoryCache,
                               BTCPayNetworkProvider networkProvider,
-                              LightningClientFactoryService lightningClientFactory,
-                              IHttpClientFactory httpClientFactory, LightningLikePaymentHandler lightningLikePaymentHandler)
+                              LightningClientFactoryService lightningClientFactory)
         {
             _Aggregator = aggregator;
             _InvoiceRepository = invoiceRepository;
             _memoryCache = memoryCache;
             _NetworkProvider = networkProvider;
             this.lightningClientFactory = lightningClientFactory;
-            _lightningLikePaymentHandler = lightningLikePaymentHandler;
         }
 
         async Task CheckingInvoice(CancellationToken cancellation)

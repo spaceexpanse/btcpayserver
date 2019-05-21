@@ -27,7 +27,6 @@ namespace BTCPayServer.Payments.Bitcoin
     public class NBXplorerListener : IHostedService
     {
         EventAggregator _Aggregator;
-        private readonly IEnumerable<IPaymentMethodHandler> _paymentMethodHandlers;
         private readonly BitcoinLikePaymentHandler _bitcoinLikePaymentHandler;
         ExplorerClientProvider _ExplorerClients;
         Microsoft.Extensions.Hosting.IApplicationLifetime _Lifetime;
@@ -40,7 +39,6 @@ namespace BTCPayServer.Payments.Bitcoin
                                 BTCPayWalletProvider wallets,
                                 InvoiceRepository invoiceRepository,
                                 EventAggregator aggregator, 
-                                IEnumerable<IPaymentMethodHandler> paymentMethodHandlers,
                                 BitcoinLikePaymentHandler bitcoinLikePaymentHandler,
                                 Microsoft.Extensions.Hosting.IApplicationLifetime lifetime)
         {
@@ -49,7 +47,6 @@ namespace BTCPayServer.Payments.Bitcoin
             _InvoiceRepository = invoiceRepository;
             _ExplorerClients = explorerClients;
             _Aggregator = aggregator;
-            _paymentMethodHandlers = paymentMethodHandlers;
             _bitcoinLikePaymentHandler = bitcoinLikePaymentHandler;
             _Lifetime = lifetime;
         }
