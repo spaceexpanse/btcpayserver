@@ -104,8 +104,8 @@ namespace BTCPayServer.Tests
                 tester.Start();
                 var paymentMethodHandlers =
                     tester.PayTester.ServiceProvider.GetServices<IPaymentMethodHandler>();
-
-                var dummy = new Key().PubKey.GetAddress(ScriptPubKeyType.Legacy, Network.RegTest).ToString();#pragma warning disable CS0618
+#pragma warning disable CS0618
+                var dummy = new Key().PubKey.GetAddress(ScriptPubKeyType.Legacy, Network.RegTest).ToString();
                 InvoiceEntity invoiceEntity = new InvoiceEntity();
                 invoiceEntity.Payments = new System.Collections.Generic.List<PaymentEntity>();
                 invoiceEntity.ProductInformation = new ProductInformation() {Price = 100};
