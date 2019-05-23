@@ -1,35 +1,39 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using BTCPayServer.Services.Rates;
-using NBitcoin;
+﻿using NBitcoin;
 using NBXplorer;
 
 namespace BTCPayServer
 {
-    public partial class BTCPayNetworkProvider
+    public class BitcoinPlusBTCPayNetworkInitializer : BaseBitcoinlikeBTCPayNetworkProvider
     {
-        public void InitBitcoinplus()
+        public override string CryptCode => "XBC";
+
+        public BitcoinPlusBTCPayNetworkInitializer(NBXplorerNetworkProvider provider) : base(provider)
         {
-            var nbxplorerNetwork = NBXplorerNetworkProvider.GetFromCryptoCode("XBC");
-            Add(new BTCPayNetwork()
+        }
+
+        public override BTCPayNetwork Initialize(NBXplorerNetwork network, NetworkType networkType)
+        {
+            // Disabled because of https://twitter.com/Cryptopia_NZ/status/1085084168852291586
+            return null;
+#pragma warning disable 162
+            return new BTCPayNetwork()
             {
-                CryptoCode = nbxplorerNetwork.CryptoCode,
+                CryptoCode = network.CryptoCode,
                 DisplayName = "Bitcoinplus",
-                BlockExplorerLink = NetworkType == NetworkType.Mainnet ? "https://chainz.cryptoid.info/xbc/tx.dws?{0}" : "https://chainz.cryptoid.info/xbc/tx.dws?{0}",
-                NBitcoinNetwork = nbxplorerNetwork.NBitcoinNetwork,
-                NBXplorerNetwork = nbxplorerNetwork,
+                BlockExplorerLink =
+                    networkType == NetworkType.Mainnet
+                        ? "https://chainz.cryptoid.info/xbc/tx.dws?{0}"
+                        : "https://chainz.cryptoid.info/xbc/tx.dws?{0}",
+                NBitcoinNetwork = network.NBitcoinNetwork,
+                NBXplorerNetwork = network,
                 UriScheme = "bitcoinplus",
-                DefaultRateRules = new[] 
-                {
-                                "XBC_X = XBC_BTC * BTC_X",
-                                "XBC_BTC = cryptopia(XBC_BTC)"
-                },
+                DefaultRateRules = new[] {"XBC_X = XBC_BTC * BTC_X", "XBC_BTC = cryptopia(XBC_BTC)"},
                 CryptoImagePath = "imlegacy/bitcoinplus.png",
-                DefaultSettings = BTCPayDefaultSettings.GetDefaultSettings(NetworkType),
-                CoinType = NetworkType == NetworkType.Mainnet ? new KeyPath("65'") : new KeyPath("1'")
-            });
+                DefaultSettings = BTCPayDefaultSettings.GetDefaultSettings(networkType),
+                CoinType = networkType == NetworkType.Mainnet ? new KeyPath("65'") : new KeyPath("1'")
+            };
+
+#pragma warning restore 162
         }
     }
 }

@@ -35,7 +35,8 @@ namespace BTCPayServer
             try
             {
                 // This is the only way that LoadArgs can print to console. Because LoadArgs is called by the HostBuilder before Logs.Configure is called
-                var conf = new DefaultConfiguration() { Logger = logger }.CreateConfiguration(args);
+                
+                var conf = new DefaultConfiguration(ReflectionExtensions.GetInstancesImplementingInterface<BTCPayNetworkInitializer>()) { Logger = logger }.CreateConfiguration(args);
                 if (conf == null)
                     return;
                 Logs.Configure(loggerFactory);

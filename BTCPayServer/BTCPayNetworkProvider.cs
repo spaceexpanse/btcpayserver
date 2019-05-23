@@ -8,6 +8,7 @@ using Microsoft.Extensions.Caching.Memory;
 using NBitcoin;
 using NBitpayClient;
 using NBXplorer;
+using NUglify.Helpers;
 
 namespace BTCPayServer
 {
@@ -15,20 +16,9 @@ namespace BTCPayServer
     {
         Dictionary<string, BTCPayNetwork> _Networks = new Dictionary<string, BTCPayNetwork>();
 
-
-        private readonly NBXplorerNetworkProvider _NBXplorerNetworkProvider;
-        public NBXplorerNetworkProvider NBXplorerNetworkProvider
-        {
-            get
-            {
-                return _NBXplorerNetworkProvider;
-            }
-        }
-
         BTCPayNetworkProvider(BTCPayNetworkProvider filtered, string[] cryptoCodes)
         {
             NetworkType = filtered.NetworkType;
-            _NBXplorerNetworkProvider = new NBXplorerNetworkProvider(filtered.NetworkType);
             _Networks = new Dictionary<string, BTCPayNetwork>();
             cryptoCodes = cryptoCodes.Select(c => c.ToUpperInvariant()).ToArray();
             foreach (var network in filtered._Networks)
@@ -41,20 +31,9 @@ namespace BTCPayServer
         }
 
         public NetworkType NetworkType { get; private set; }
-        public BTCPayNetworkProvider(NetworkType networkType)
+        public BTCPayNetworkProvider(IEnumerable<BTCPayNetworkInitializer> btcPayNetworkInitializers)
         {
-            _NBXplorerNetworkProvider = new NBXplorerNetworkProvider(networkType);
-            NetworkType = networkType;
-            InitBitcoin();
-            InitLitecoin();
-            InitBitcore();
-            InitDogecoin();
-            InitBitcoinGold();
-            InitMonacoin();
-            InitDash();
-            InitFeathercoin();
-            InitGroestlcoin();
-            InitViacoin();
+            btcPayNetworkInitializers.ForEach(initializer => initializer.Initialize().ForEach(Add));
 
             // Assume that electrum mappings are same as BTC if not specified
             foreach (var network in _Networks)
@@ -71,11 +50,6 @@ namespace BTCPayServer
                     }
                 }
             }
-
-            // Disabled because of https://twitter.com/Cryptopia_NZ/status/1085084168852291586
-            //InitPolis();
-            //InitBitcoinplus();
-            //InitUfo();
         }
 
         /// <summary>
@@ -93,7 +67,10 @@ namespace BTCPayServer
 
         public void Add(BTCPayNetwork network)
         {
-            _Networks.Add(network.CryptoCode.ToUpperInvariant(), network);
+            if (network != null)
+            {
+                _Networks.Add(network.CryptoCode.ToUpperInvariant(), network);
+            }
         }
 
         public IEnumerable<BTCPayNetwork> GetAll()

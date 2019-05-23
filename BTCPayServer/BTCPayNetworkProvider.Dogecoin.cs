@@ -1,25 +1,24 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using BTCPayServer.Services.Rates;
-using NBitcoin;
+﻿using NBitcoin;
 using NBXplorer;
 
 namespace BTCPayServer
 {
-    public partial class BTCPayNetworkProvider
+    public class DogecoinBTCPayNetworkInitializer: BaseBitcoinlikeBTCPayNetworkProvider
     {
-        public void InitDogecoin()
+        public override string CryptCode => "DOGE";
+        
+        public DogecoinBTCPayNetworkInitializer(NBXplorerNetworkProvider provider) : base(provider)
         {
-            var nbxplorerNetwork = NBXplorerNetworkProvider.GetFromCryptoCode("DOGE");
-            Add(new BTCPayNetwork()
+        }
+        public override BTCPayNetwork Initialize(NBXplorerNetwork network, NetworkType networkType)
+        {
+            return new BTCPayNetwork()
             {
-                CryptoCode = nbxplorerNetwork.CryptoCode,
+                CryptoCode = network.CryptoCode,
                 DisplayName = "Dogecoin",
-                BlockExplorerLink = NetworkType == NetworkType.Mainnet ? "https://dogechain.info/tx/{0}" : "https://dogechain.info/tx/{0}",
-                NBitcoinNetwork = nbxplorerNetwork.NBitcoinNetwork,
-                NBXplorerNetwork = nbxplorerNetwork,
+                BlockExplorerLink = networkType == NetworkType.Mainnet ? "https://dogechain.info/tx/{0}" : "https://dogechain.info/tx/{0}",
+                NBitcoinNetwork = network.NBitcoinNetwork,
+                NBXplorerNetwork = network,
                 UriScheme = "dogecoin",
                 DefaultRateRules = new[] 
                 {
@@ -27,9 +26,9 @@ namespace BTCPayServer
                                 "DOGE_BTC = bittrex(DOGE_BTC)"
                 },
                 CryptoImagePath = "imlegacy/dogecoin.png",
-                DefaultSettings = BTCPayDefaultSettings.GetDefaultSettings(NetworkType),
-                CoinType = NetworkType == NetworkType.Mainnet ? new KeyPath("3'") : new KeyPath("1'")
-            });
+                DefaultSettings = BTCPayDefaultSettings.GetDefaultSettings(networkType),
+                CoinType = networkType == NetworkType.Mainnet ? new KeyPath("3'") : new KeyPath("1'")
+            };
         }
     }
 }

@@ -82,4 +82,39 @@ namespace BTCPayServer
                         .Derive(CoinType); 
         }
     }
+
+    public interface BTCPayNetworkInitializer
+    {
+        BTCPayNetwork[] Initialize();
+    }
+
+
+    public abstract class BaseBitcoinlikeBTCPayNetworkProvider : BTCPayNetworkInitializer
+    {
+        protected readonly NBXplorerNetworkProvider _provider;
+        public abstract string CryptCode { get; }
+
+        public BaseBitcoinlikeBTCPayNetworkProvider()
+        {
+            _provider = new NBXplorerNetworkProvider(NetworkType.Mainnet);
+        }
+
+        public BaseBitcoinlikeBTCPayNetworkProvider(NBXplorerNetworkProvider provider )
+        {
+            _provider = provider;
+        }
+
+        public virtual BTCPayNetwork[] Initialize()
+        {
+            var nbxplorerNetwork = _provider.GetFromCryptoCode(CryptCode);
+            var result = Initialize(nbxplorerNetwork, _provider.NetworkType);
+            if (result != null)
+            {
+                return new[] {result};
+            }
+            return new BTCPayNetwork[0];
+        }
+
+        public abstract BTCPayNetwork Initialize(NBXplorerNetwork network, NetworkType networkType);
+    }
 }

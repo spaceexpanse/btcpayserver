@@ -1,39 +1,41 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using BTCPayServer.Services.Rates;
+﻿using System.Collections.Generic;
 using NBitcoin;
-using NBitpayClient;
 using NBXplorer;
 
 namespace BTCPayServer
 {
-    public partial class BTCPayNetworkProvider
+    public class BitcoinBTCPayNetworkInitializer: BaseBitcoinlikeBTCPayNetworkProvider
     {
-        public void InitBitcoin()
+        public override string CryptCode => "BTC";
+        
+        public BitcoinBTCPayNetworkInitializer(NBXplorerNetworkProvider provider) : base(provider)
         {
-            var nbxplorerNetwork = NBXplorerNetworkProvider.GetFromCryptoCode("BTC");
-            Add(new BTCPayNetwork()
+        }
+        public override BTCPayNetwork Initialize(NBXplorerNetwork network, NetworkType networkType)
+        {
+            return new BTCPayNetwork()
             {
-                CryptoCode = nbxplorerNetwork.CryptoCode,
+                CryptoCode = network.CryptoCode,
                 DisplayName = "Bitcoin",
-                BlockExplorerLink = NetworkType == NetworkType.Mainnet ? "https://www.smartbit.com.au/tx/{0}" : "https://testnet.smartbit.com.au/tx/{0}",
-                NBitcoinNetwork = nbxplorerNetwork.NBitcoinNetwork,
-                NBXplorerNetwork = nbxplorerNetwork,
+                BlockExplorerLink =
+                    networkType == NetworkType.Mainnet
+                        ? "https://www.smartbit.com.au/tx/{0}"
+                        : "https://testnet.smartbit.com.au/tx/{0}",
+                NBitcoinNetwork = network.NBitcoinNetwork,
+                NBXplorerNetwork = network,
                 UriScheme = "bitcoin",
                 CryptoImagePath = "imlegacy/bitcoin.svg",
                 LightningImagePath = "imlegacy/bitcoin-lightning.svg",
-                DefaultSettings = BTCPayDefaultSettings.GetDefaultSettings(NetworkType),
-                CoinType = NetworkType == NetworkType.Mainnet ? new KeyPath("0'") : new KeyPath("1'"),
+                DefaultSettings = BTCPayDefaultSettings.GetDefaultSettings(networkType),
+                CoinType = networkType == NetworkType.Mainnet ? new KeyPath("0'") : new KeyPath("1'"),
                 SupportRBF = true,
                 //https://github.com/spesmilo/electrum/blob/11733d6bc271646a00b69ff07657119598874da4/electrum/constants.py
-                ElectrumMapping = NetworkType == NetworkType.Mainnet
+                ElectrumMapping = networkType == NetworkType.Mainnet
                     ? new Dictionary<uint, DerivationType>()
                     {
-                        {0x0488b21eU, DerivationType.Legacy }, // xpub
-                        {0x049d7cb2U, DerivationType.SegwitP2SH }, // ypub
-                        {0x4b24746U, DerivationType.Segwit }, //zpub
+                        {0x0488b21eU, DerivationType.Legacy}, // xpub
+                        {0x049d7cb2U, DerivationType.SegwitP2SH}, // ypub
+                        {0x4b24746U, DerivationType.Segwit}, //zpub
                     }
                     : new Dictionary<uint, DerivationType>()
                     {
@@ -41,7 +43,7 @@ namespace BTCPayServer
                         {0x044a5262U, DerivationType.SegwitP2SH},
                         {0x045f1cf6U, DerivationType.Segwit}
                     }
-            });
+            };
         }
     }
 }

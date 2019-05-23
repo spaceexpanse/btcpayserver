@@ -1,25 +1,26 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using NBitcoin;
+﻿using NBitcoin;
+using NBXplorer;
 
 namespace BTCPayServer
 {
-    public partial class BTCPayNetworkProvider
+    public class GroestlcoinBTCPayNetworkInitializer: BaseBitcoinlikeBTCPayNetworkProvider
     {
-        public void InitGroestlcoin()
+        public override string CryptCode => "GRS";
+        
+        public GroestlcoinBTCPayNetworkInitializer(NBXplorerNetworkProvider provider) : base(provider)
         {
-            var nbxplorerNetwork = NBXplorerNetworkProvider.GetFromCryptoCode("GRS");
-            Add(new BTCPayNetwork()
+        }
+        public override BTCPayNetwork Initialize(NBXplorerNetwork network, NetworkType networkType)
+        {
+            return new BTCPayNetwork()
             {
-                CryptoCode = nbxplorerNetwork.CryptoCode,
+                CryptoCode = network.CryptoCode,
                 DisplayName = "Groestlcoin",
-                BlockExplorerLink = NetworkType == NetworkType.Mainnet
+                BlockExplorerLink = networkType == NetworkType.Mainnet
                     ? "https://chainz.cryptoid.info/grs/tx.dws?{0}.htm"
                     : "https://chainz.cryptoid.info/grs-test/tx.dws?{0}.htm",
-                NBitcoinNetwork = nbxplorerNetwork.NBitcoinNetwork,
-                NBXplorerNetwork = nbxplorerNetwork,
+                NBitcoinNetwork = network.NBitcoinNetwork,
+                NBXplorerNetwork = network,
                 UriScheme = "groestlcoin",
                 DefaultRateRules = new[]
                 {
@@ -28,9 +29,9 @@ namespace BTCPayServer
                 },
                 CryptoImagePath = "imlegacy/groestlcoin.png",
                 LightningImagePath = "imlegacy/groestlcoin-lightning.svg",
-                DefaultSettings = BTCPayDefaultSettings.GetDefaultSettings(NetworkType),
-                CoinType = NetworkType == NetworkType.Mainnet ? new KeyPath("17'") : new KeyPath("1'")
-            });
+                DefaultSettings = BTCPayDefaultSettings.GetDefaultSettings(networkType),
+                CoinType = networkType == NetworkType.Mainnet ? new KeyPath("17'") : new KeyPath("1'")
+            };
         }
     }
 }

@@ -1,25 +1,24 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using BTCPayServer.Services.Rates;
-using NBitcoin;
+﻿using NBitcoin;
 using NBXplorer;
 
 namespace BTCPayServer
 {
-    public partial class BTCPayNetworkProvider
+    public class FeathercoinBTCPayNetworkInitializer: BaseBitcoinlikeBTCPayNetworkProvider
     {
-        public void InitFeathercoin()
+        public override string CryptCode => "FTC";
+        
+        public FeathercoinBTCPayNetworkInitializer(NBXplorerNetworkProvider provider) : base(provider)
         {
-            var nbxplorerNetwork = NBXplorerNetworkProvider.GetFromCryptoCode("FTC");
-            Add(new BTCPayNetwork()
+        }
+        public override BTCPayNetwork Initialize(NBXplorerNetwork network, NetworkType networkType)
+        {
+            return new BTCPayNetwork()
             {
-                CryptoCode = nbxplorerNetwork.CryptoCode,
+                CryptoCode = network.CryptoCode,
                 DisplayName = "Feathercoin",
-                BlockExplorerLink = NetworkType == NetworkType.Mainnet ? "https://explorer.feathercoin.com/tx/{0}" : "https://explorer.feathercoin.com/tx/{0}",
-                NBitcoinNetwork = nbxplorerNetwork.NBitcoinNetwork,
-                NBXplorerNetwork = nbxplorerNetwork,
+                BlockExplorerLink = networkType == NetworkType.Mainnet ? "https://explorer.feathercoin.com/tx/{0}" : "https://explorer.feathercoin.com/tx/{0}",
+                NBitcoinNetwork = network.NBitcoinNetwork,
+                NBXplorerNetwork = network,
                 UriScheme = "feathercoin",
                 DefaultRateRules = new[] 
                 {
@@ -27,9 +26,9 @@ namespace BTCPayServer
                                 "FTC_BTC = bittrex(FTC_BTC)"
                 },
                 CryptoImagePath = "imlegacy/feathercoin.png",
-                DefaultSettings = BTCPayDefaultSettings.GetDefaultSettings(NetworkType),
-                CoinType = NetworkType == NetworkType.Mainnet ? new KeyPath("8'") : new KeyPath("1'")
-            });
+                DefaultSettings = BTCPayDefaultSettings.GetDefaultSettings(networkType),
+                CoinType = networkType == NetworkType.Mainnet ? new KeyPath("8'") : new KeyPath("1'")
+            };
         }
     }
 }

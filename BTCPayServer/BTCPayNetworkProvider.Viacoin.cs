@@ -1,25 +1,24 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using BTCPayServer.Services.Rates;
 using NBitcoin;
 using NBXplorer;
 
 namespace BTCPayServer
 {
-    public partial class BTCPayNetworkProvider
+    public class ViacoinBTCPayNetworkInitializer: BaseBitcoinlikeBTCPayNetworkProvider
     {
-        public void InitViacoin()
+        public override string CryptCode => "VIA";
+        
+        public ViacoinBTCPayNetworkInitializer(NBXplorerNetworkProvider provider) : base(provider)
         {
-            var nbxplorerNetwork = NBXplorerNetworkProvider.GetFromCryptoCode("VIA");
-            Add(new BTCPayNetwork()
+        }
+        public override BTCPayNetwork Initialize(NBXplorerNetwork network, NetworkType networkType)
+        {
+            return new BTCPayNetwork()
             {
-                CryptoCode = nbxplorerNetwork.CryptoCode,
+                CryptoCode = network.CryptoCode,
                 DisplayName = "Viacoin",
-                BlockExplorerLink = NetworkType == NetworkType.Mainnet ? "https://explorer.viacoin.org/tx/{0}" : "https://explorer.viacoin.org/tx/{0}",
-                NBitcoinNetwork = nbxplorerNetwork.NBitcoinNetwork,
-                NBXplorerNetwork = nbxplorerNetwork,
+                BlockExplorerLink = networkType == NetworkType.Mainnet ? "https://explorer.viacoin.org/tx/{0}" : "https://explorer.viacoin.org/tx/{0}",
+                NBitcoinNetwork = network.NBitcoinNetwork,
+                NBXplorerNetwork = network,
                 UriScheme = "viacoin",
                 DefaultRateRules = new[]
                 {
@@ -27,9 +26,9 @@ namespace BTCPayServer
                                 "VIA_BTC = bittrex(VIA_BTC)"
                 },
                 CryptoImagePath = "imlegacy/viacoin.png",
-                DefaultSettings = BTCPayDefaultSettings.GetDefaultSettings(NetworkType),
-                CoinType = NetworkType == NetworkType.Mainnet ? new KeyPath("14'") : new KeyPath("1'")
-            });
+                DefaultSettings = BTCPayDefaultSettings.GetDefaultSettings(networkType),
+                CoinType = networkType == NetworkType.Mainnet ? new KeyPath("14'") : new KeyPath("1'")
+            };
         }
     }
 }

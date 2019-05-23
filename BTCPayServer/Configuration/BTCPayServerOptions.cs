@@ -69,6 +69,7 @@ namespace BTCPayServer.Configuration
         public void LoadArgs(IConfiguration conf)
         {
             NetworkType = DefaultConfiguration.GetNetworkType(conf);
+            
             DataDir = conf.GetDataDir(NetworkType);
             Logs.Configuration.LogInformation("Network: " + NetworkType.ToString());
 

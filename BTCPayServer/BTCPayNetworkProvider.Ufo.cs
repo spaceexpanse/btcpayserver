@@ -1,25 +1,27 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using BTCPayServer.Services.Rates;
-using NBitcoin;
+﻿using NBitcoin;
 using NBXplorer;
 
 namespace BTCPayServer
 {
-    public partial class BTCPayNetworkProvider
+    public class UfoBTCPayNetworkInitializer: BaseBitcoinlikeBTCPayNetworkProvider
     {
-        public void InitUfo()
+        public override string CryptCode => "UFO";
+        
+        public UfoBTCPayNetworkInitializer(NBXplorerNetworkProvider provider) : base(provider)
         {
-            var nbxplorerNetwork = NBXplorerNetworkProvider.GetFromCryptoCode("UFO");
-            Add(new BTCPayNetwork()
+        }
+        public override BTCPayNetwork Initialize(NBXplorerNetwork network, NetworkType networkType)
+        {
+            // Disabled because of https://twitter.com/Cryptopia_NZ/status/1085084168852291586
+            return null;
+#pragma warning disable 162
+            return new BTCPayNetwork()
             {
-                CryptoCode = nbxplorerNetwork.CryptoCode,
+                CryptoCode = network.CryptoCode,
                 DisplayName = "Ufo",
-                BlockExplorerLink = NetworkType == NetworkType.Mainnet ? "https://chainz.cryptoid.info/ufo/tx.dws?{0}" : "https://chainz.cryptoid.info/ufo/tx.dws?{0}",
-                NBitcoinNetwork = nbxplorerNetwork.NBitcoinNetwork,
-                NBXplorerNetwork = nbxplorerNetwork,
+                BlockExplorerLink = networkType == NetworkType.Mainnet ? "https://chainz.cryptoid.info/ufo/tx.dws?{0}" : "https://chainz.cryptoid.info/ufo/tx.dws?{0}",
+                NBitcoinNetwork = network.NBitcoinNetwork,
+                NBXplorerNetwork = network,
                 UriScheme = "ufo",
                 DefaultRateRules = new[] 
                 {
@@ -27,9 +29,10 @@ namespace BTCPayServer
                                 "UFO_BTC = coinexchange(UFO_BTC)"
                 },
                 CryptoImagePath = "imlegacy/ufo.png",
-                DefaultSettings = BTCPayDefaultSettings.GetDefaultSettings(NetworkType),
-                CoinType = NetworkType == NetworkType.Mainnet ? new KeyPath("202'") : new KeyPath("1'")
-            });
+                DefaultSettings = BTCPayDefaultSettings.GetDefaultSettings(networkType),
+                CoinType = networkType == NetworkType.Mainnet ? new KeyPath("202'") : new KeyPath("1'")
+            };
+#pragma warning restore 162
         }
     }
 }

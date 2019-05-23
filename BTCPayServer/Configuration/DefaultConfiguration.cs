@@ -16,9 +16,16 @@ namespace BTCPayServer.Configuration
 {
     public class DefaultConfiguration : StandardConfiguration.DefaultConfiguration
     {
+        private readonly IEnumerable<BTCPayNetworkInitializer> _btcPayNetworkInitializers;
+
+        public DefaultConfiguration(IEnumerable<BTCPayNetworkInitializer> btcPayNetworkInitializers)
+        {
+            _btcPayNetworkInitializers = btcPayNetworkInitializers;
+        }
+        
         protected override CommandLineApplication CreateCommandLineApplicationCore()
         {
-            var provider = new BTCPayNetworkProvider(NetworkType.Mainnet);
+            var provider = new BTCPayNetworkProvider(_btcPayNetworkInitializers);
             var chains = string.Join(",", provider.GetAll().Select(n => n.CryptoCode.ToLowerInvariant()).ToArray());
             CommandLineApplication app = new CommandLineApplication(true)
             {
@@ -121,7 +128,7 @@ namespace BTCPayServer.Configuration
             builder.AppendLine("#mysql=User ID=root;Password=myPassword;Host=localhost;Port=3306;Database=myDataBase;");
             builder.AppendLine();
             builder.AppendLine("### NBXplorer settings ###");
-            foreach (var n in new BTCPayNetworkProvider(networkType).GetAll())
+            foreach (var n in new BTCPayNetworkProvider( _btcPayNetworkInitializers).GetAll())
             {
                 builder.AppendLine($"#{n.CryptoCode}.explorer.url={n.NBXplorerNetwork.DefaultSettings.DefaultUrl}");
                 builder.AppendLine($"#{n.CryptoCode}.explorer.cookiefile={ n.NBXplorerNetwork.DefaultSettings.DefaultCookieFile}");

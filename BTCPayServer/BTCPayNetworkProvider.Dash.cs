@@ -1,22 +1,26 @@
 ﻿using NBitcoin;
+using NBXplorer;
 
 namespace BTCPayServer
 {
-    public partial class BTCPayNetworkProvider
+    public class DashBTCPayNetworkInitializer: BaseBitcoinlikeBTCPayNetworkProvider
     {
-        public void InitDash()
+        public override string CryptCode => "DASH";
+        
+        public DashBTCPayNetworkInitializer(NBXplorerNetworkProvider provider) : base(provider)
         {
-            //not needed: NBitcoin.Altcoins.Dash.Instance.EnsureRegistered();
-            var nbxplorerNetwork = NBXplorerNetworkProvider.GetFromCryptoCode("DASH");
-            Add(new BTCPayNetwork()
+        }
+        public override BTCPayNetwork Initialize(NBXplorerNetwork network, NetworkType networkType)
+        {
+            return new BTCPayNetwork()
             {
-                CryptoCode = nbxplorerNetwork.CryptoCode,
+                CryptoCode = network.CryptoCode,
                 DisplayName = "Dash",
-                BlockExplorerLink = NetworkType == NetworkType.Mainnet
+                BlockExplorerLink = networkType == NetworkType.Mainnet
                     ? "https://insight.dash.org/insight/tx/{0}"
                     : "https://testnet-insight.dashevo.org/insight/tx/{0}",
-                NBitcoinNetwork = nbxplorerNetwork.NBitcoinNetwork,
-                NBXplorerNetwork = nbxplorerNetwork,
+                NBitcoinNetwork = network.NBitcoinNetwork,
+                NBXplorerNetwork = network,
                 UriScheme = "dash",
                 DefaultRateRules = new[]
                     {
@@ -24,11 +28,11 @@ namespace BTCPayServer
                         "DASH_BTC = bittrex(DASH_BTC)"
                     },
                 CryptoImagePath = "imlegacy/dash.png",
-                DefaultSettings = BTCPayDefaultSettings.GetDefaultSettings(NetworkType),
+                DefaultSettings = BTCPayDefaultSettings.GetDefaultSettings(networkType),
                 //https://github.com/satoshilabs/slips/blob/master/slip-0044.md
-                CoinType = NetworkType == NetworkType.Mainnet ? new KeyPath("5'")
+                CoinType = networkType == NetworkType.Mainnet ? new KeyPath("5'")
                     : new KeyPath("1'")
-            });
+            };
         }
     }
 }
