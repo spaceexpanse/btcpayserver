@@ -160,7 +160,7 @@ If you'd like to support the project, please visit the [donation page](https://b
 
 <div class="figure">
                         <a href="https://twitter.com/sqcrypto" target="_blank">
-                            <img src="~/img/squarecrypto.svg" alt="Sponsor Square Crypto" height="100" />
+                            <img src="BTCPayServer/wwwroot/img/sqcrypto.png" alt="Sponsor Square Crypto" height="100" />
                         </a>
                         <div class="figure-caption text-center">
                             <a href="https://twitter.com/sqcrypto" target="_blank">Square Crypto</a>
