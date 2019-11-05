@@ -154,5 +154,6 @@ Altcoins are maintained by their respective communities.
 ## Supporters
 
 The BTCPay Server Project is proudly supported by these entities through the [BTCPay Server Foundation](https://foundation.btcpayserver.org/). 
-<a target="blank" href="https://twitter.com/sqcrypto" style="text-align:center"><img src="BTCPayServer/wwwroot/img/sqcrypto.png" width="200"><br/>Square Crypto</a>
+<a target="blank" href="https://twitter.com/sqcrypto" style="text-align:center"><img src="BTCPayServer/wwwroot/img/sqcrypto.png" width="200">
+<br/>Square Crypto</a>
 If you'd like to support the project, please visit the [donation page](https://btcpayserver.org/donate/).
