@@ -119,6 +119,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <Folder Include="Controllers\RestApi\Server" />
+	  <Folder Include="Controllers\RestApi\Stores\Apps" />
+	  <Folder Include="Controllers\RestApi\Users" />
 	  <Folder Include="wwwroot\vendor\clipboard.js\" />
 	  <Folder Include="wwwroot\vendor\highlightjs\" />
 	  <Folder Include="wwwroot\vendor\summernote" />

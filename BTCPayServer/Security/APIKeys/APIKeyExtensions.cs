@@ -58,7 +58,11 @@ namespace BTCPayServer.Security.APIKeys
         }
         public static bool HasPermissions(this AuthorizationHandlerContext context, params string[] scopes)
         {
-            return scopes.All(s => context.User.HasClaim(c => c.Type.Equals(APIKeyConstants.ClaimTypes.Permissions, StringComparison.InvariantCultureIgnoreCase) && c.Value.Split(' ').Contains(s)));
+            return context.User.HasPermissions(scopes);
+        }
+        public static bool HasPermissions(this ClaimsPrincipal context, params string[] scopes)
+        {
+            return scopes.All(s => context.HasClaim(c => c.Type.Equals(APIKeyConstants.ClaimTypes.Permissions, StringComparison.InvariantCultureIgnoreCase) && c.Value.Split(' ').Contains(s)));
         }
     }
 }

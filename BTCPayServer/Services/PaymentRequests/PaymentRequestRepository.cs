@@ -106,6 +106,12 @@ namespace BTCPayServer.Services.PaymentRequests
                         query.Status.Contains(data.Status));
                 }
 
+                if (query.Ids != null && query.Ids.Any())
+                {
+                    queryable = queryable.Where(data =>
+                        query.Ids.Contains(data.Id));
+                }
+
                 if (!string.IsNullOrEmpty(query.UserId))
                 {
                     queryable = queryable.Where(i =>
@@ -195,6 +201,7 @@ namespace BTCPayServer.Services.PaymentRequests
     public class PaymentRequestQuery
     {
         public string StoreId { get; set; }
+        public string[] Ids { get; set; }
         
         public PaymentRequestData.PaymentRequestStatus[] Status{ get; set; }
         public string UserId { get; set; }
