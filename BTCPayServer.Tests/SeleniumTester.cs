@@ -76,13 +76,14 @@ namespace BTCPayServer.Tests
             using var cts = new CancellationTokenSource(20_000);
             while (!cts.IsCancellationRequested)
             {
-                var success = Driver.FindElements(By.ClassName("alert-success")).Where(el => el.Displayed).Any();
-                if (success)
-                    return;
+                var success = Driver.FindElements(By.ClassName("alert-success")).Where(el => el.Displayed);
+                if (success.Any())
+                    return success.First();
                 Thread.Sleep(100);
             }
             Logs.Tester.LogInformation(this.Driver.PageSource);
             Assert.True(false, "Should have shown happy message");
+            return null;
         }
 
         public static readonly TimeSpan ImplicitWait = TimeSpan.FromSeconds(10);
