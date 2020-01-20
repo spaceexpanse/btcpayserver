@@ -14,6 +14,7 @@ namespace BTCPayServer
             var nbxplorerNetwork = NBXplorerNetworkProvider.GetFromCryptoCode("LBTC");
             Add(new ElementsBTCPayNetwork()
             {
+                ShowSyncProgress = false,
                 CryptoCode = "USDt",
                 NetworkCryptoCode = "LBTC",
                 DefaultRateRules = new[]
