@@ -14,7 +14,6 @@ namespace BTCPayServer.Controllers.RestApi
     [ApiController]
     [Route("api/v0.1/stores/{storeId}/bitpay-tokens")]
     [Authorize(Policy = Policies.CanModifyStoreSettings.Key)]
-    [Authorize]
     [IncludeInOpenApiDocs]
     public class BitPayTokensController : ControllerBase
     {

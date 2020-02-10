@@ -50,7 +50,7 @@ namespace BTCPayServer.Controllers.RestApi
         }
 
         [HttpGet("sources")]
-        public ActionResult<Dictionary<string, CoinAverageExchange>> GetAvailableSources()
+        public ActionResult<Dictionary<string, AvailableRateProvider>> GetAvailableSources()
         {
             return Ok(_rateProviderFactory.RateProviderFactory.GetSupportedExchanges());
         }
@@ -136,9 +136,8 @@ namespace BTCPayServer.Controllers.RestApi
                 !_rateProviderFactory
                     .RateProviderFactory
                     .GetSupportedExchanges()
-                    .Keys
                     .Any(s =>
-                        s.Equals(configuration.PreferredSource,
+                        s.Id.Equals(configuration.PreferredSource,
                             StringComparison.InvariantCultureIgnoreCase)))
             {
                 ModelState.AddModelError(nameof(configuration.PreferredSource),
