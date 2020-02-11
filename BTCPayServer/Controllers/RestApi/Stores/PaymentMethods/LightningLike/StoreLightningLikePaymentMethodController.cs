@@ -23,25 +23,22 @@ namespace BTCPayServer.Controllers.RestApi
     [Authorize(Policy = Policies.CanModifyStoreSettings.Key, AuthenticationSchemes = AuthenticationSchemes.ApiKey)]
     public class StoreLightningLikePaymentMethodController : ControllerBase
     {
-        private readonly BTCPayServerOptions _btcPayServerOptions;
         private StoreData Store => HttpContext.GetStoreData();
         private readonly StoreRepository _storeRepository;
+        private readonly BTCPayServerOptions _btcPayServerOptions;
         private readonly BTCPayNetworkProvider _btcPayNetworkProvider;
-        private readonly BTCPayWalletProvider _walletProvider;
         private readonly CssThemeManager _cssThemeManager;
 
         public StoreLightningLikePaymentMethodController(
             StoreRepository storeRepository,
             BTCPayServerOptions btcPayServerOptions,
             BTCPayNetworkProvider btcPayNetworkProvider,
-            ExplorerClientProvider explorerClientProvider, 
-            BTCPayWalletProvider walletProvider,
             CssThemeManager cssThemeManager
             )
         {
             _storeRepository = storeRepository;
+            _btcPayServerOptions = btcPayServerOptions;
             _btcPayNetworkProvider = btcPayNetworkProvider;
-            _walletProvider = walletProvider;
             _cssThemeManager = cssThemeManager;
         }
 

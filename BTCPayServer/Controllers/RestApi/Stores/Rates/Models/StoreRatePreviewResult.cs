@@ -2,7 +2,7 @@
 
 namespace BTCPayServer.Controllers.RestApi.Models
 {
-    public class StoreRatePreviewResult : StoreRateResult
+    public class StoreRatePreviewResult
     {
         public string CurrencyPair { get; set; }
         public decimal? Rate { get; set; }
