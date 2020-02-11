@@ -2,12 +2,15 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using BTCPayServer.Controllers.RestApi.Models;
+using BTCPayServer.Payments;
 using BTCPayServer.Security;
 using BTCPayServer.Security.Bitpay;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NBitcoin;
 using NBitpayClient.Extensions;
+using NSwag.Annotations;
 
 namespace BTCPayServer.Controllers.RestApi
 {
@@ -25,12 +28,21 @@ namespace BTCPayServer.Controllers.RestApi
         }
 
         [HttpGet("")]
+        [Authorize(Policy = Policies.CanModifyStoreSettings.Key, AuthenticationSchemes = AuthenticationSchemes.ApiKey)]
+        [OpenApiOperation("Get all BitPay tokens", "Get all BitPay tokens for the specified store")]
+        [SwaggerResponse(StatusCodes.Status200OK, typeof(BitTokenEntity[]),
+            Description = "All BitPay tokens for the specified store")]
         public async Task<ActionResult<IEnumerable<BitTokenEntity>>> GetTokens(string storeId)
         {
             return Ok(await _tokenRepository.GetTokensByStoreIdAsync(storeId));
         }
 
         [HttpGet("{id}")]
+        [Authorize(Policy = Policies.CanModifyStoreSettings.Key, AuthenticationSchemes = AuthenticationSchemes.ApiKey)]
+        [OpenApiOperation("Get BitPay token", "Get the specified BitPay token")]
+        [SwaggerResponse(StatusCodes.Status200OK, typeof(BitTokenEntity),
+            Description = "BitPay tokens for the specified id")]
+        [SwaggerResponse(StatusCodes.Status404NotFound, null, Description  = "Token was not found with specified store and id")]
         public async Task<ActionResult<BitTokenEntity>> GetToken(string storeId, string id)
         {
             var result = await _tokenRepository.GetToken(id);
@@ -43,6 +55,12 @@ namespace BTCPayServer.Controllers.RestApi
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Policy = Policies.CanModifyStoreSettings.Key, AuthenticationSchemes = AuthenticationSchemes.ApiKey)]
+        [OpenApiOperation("Revoke BitPay token", "Revoke the specified BitPay token")]
+        [SwaggerResponse(StatusCodes.Status200OK, null,
+            Description = "BitPay token was revoked")]
+        [SwaggerResponse(StatusCodes.Status404NotFound, null, Description  = "Token was not found with specified store and id")]
+        [SwaggerResponse(StatusCodes.Status400BadRequest, null, Description  = "Token could not be revoked")]
         public async Task<ActionResult> RevokeToken(string storeId, string id)
         {
             var token = await _tokenRepository.GetToken(id);
@@ -61,14 +79,14 @@ namespace BTCPayServer.Controllers.RestApi
         }
 
         [HttpPost("pair/sin")]
+        [Authorize(Policy = Policies.CanModifyStoreSettings.Key, AuthenticationSchemes = AuthenticationSchemes.ApiKey)]
         public async Task<ActionResult<string>> CreateTokenBySIN(string storeId,
             [FromBody] CreateTokenRequestBySIN request)
         {
             var pairingCode = await _tokenRepository.CreatePairingCodeAsync();
             var pairingCodeEntity = await _tokenRepository.UpdatePairingCode(new PairingCodeEntity
             {
-                Id = pairingCode,
-                Label = request.Label,
+                Id = pairingCode, Label = request.Label,
             });
             var pairingResult = await _tokenRepository.PairWithStoreAsync(pairingCode, storeId);
 
@@ -83,6 +101,7 @@ namespace BTCPayServer.Controllers.RestApi
         }
 
         [HttpPost("pair")]
+        [Authorize(Policy = Policies.CanModifyStoreSettings.Key, AuthenticationSchemes = AuthenticationSchemes.ApiKey)]
         public async Task<ActionResult<BitTokenEntity>> CreateToken(string storeId,
             [FromBody] CreateTokenRequest request)
         {
@@ -90,13 +109,10 @@ namespace BTCPayServer.Controllers.RestApi
             await _tokenRepository.PairWithSINAsync(pairingCode, new PubKey(request.PublicKey).GetBitIDSIN());
             var pairingCodeEntity = await _tokenRepository.UpdatePairingCode(new PairingCodeEntity()
             {
-                Id = pairingCode,
-                Label = request.Label
+                Id = pairingCode, Label = request.Label
             });
-
 
             return await GetToken(storeId, pairingCodeEntity.TokenValue);
         }
     }
 }
-

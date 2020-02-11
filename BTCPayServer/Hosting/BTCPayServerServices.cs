@@ -26,6 +26,7 @@ using System.Threading;
 using BTCPayServer.Services.Wallets;
 using BTCPayServer.Logging;
 using BTCPayServer.HostedServices;
+using BTCPayServer.Hosting.OpenApi;
 using BTCPayServer.PaymentRequest;
 using BTCPayServer.Payments;
 using BTCPayServer.Payments.Bitcoin;
@@ -37,27 +38,13 @@ using BTCPayServer.Services.PaymentRequests;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NBXplorer.DerivationStrategy;
 using NicolasDorier.RateLimits;
-using Npgsql;
 using BTCPayServer.Services.Apps;
 using BTCPayServer.U2F;
 using BundlerMinifier.TagHelpers;
 using OpenIddict.EntityFrameworkCore.Models;
 
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Security.Claims;
-using System.Threading.Tasks;
-using BTCPayServer.Controllers.RestApi;
-using BTCPayServer.Models;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Routing;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using BTCPayServer.Security.Bitpay;
-using NSwag;
-using NSwag.Generation.Processors.Security;
 using Serilog;
 
 namespace BTCPayServer.Hosting
@@ -265,50 +252,12 @@ namespace BTCPayServer.Hosting
             {
                 options.AddPolicy(CorsPolicies.All, p => p.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin());
             });
-            
-            services.AddSwaggerDocument(config =>
-            {
-                config.PostProcess = document =>
-                {
-                    document.Info.Version = "v1";
-                    document.Info.Title = "BTCPay Greenfield API";
-                    document.Info.Description = "A full API to use your BTCPay Server";
-                    document.Info.TermsOfService = "None";
-                    document.Info.Contact = new NSwag.OpenApiContact
-                    {
-                        Name = "BTCPay Server",
-                        Email = string.Empty,
-                        Url = "https://btcpayserver.org"
-                    };
-                };
-                config.AddOperationFilter(context =>
-                {
-                    var methodInfo = context.MethodInfo;
-                    if (methodInfo != null)
-                    {
-                        return methodInfo.CustomAttributes.Any(data =>
-                                   data.AttributeType == typeof(IncludeInOpenApiDocs)) ||
-                               methodInfo.DeclaringType.CustomAttributes.Any(data =>
-                                   data.AttributeType == typeof(IncludeInOpenApiDocs));
-                    }
-                    return false;
-                });
-                
-                config.AddSecurity("APIKey", Enumerable.Empty<string>(), new OpenApiSecurityScheme
-                {
-                    Type = OpenApiSecuritySchemeType.ApiKey,
-                    Name = "X-APIKEY",
-                    In = OpenApiSecurityApiKeyLocation.Header
-                });
-                
-                config.OperationProcessors.Add(new X("APIKey", AuthenticationSchemes.ApiKey));
-                
-            });
+
 
             var rateLimits = new RateLimitService();
             rateLimits.SetZone($"zone={ZoneLimits.Login} rate=5r/min burst=3 nodelay");
             services.AddSingleton(rateLimits);
-
+            services.AddBTCPayOpenApi();
 
             services.AddLogging(logBuilder =>
             {
@@ -337,37 +286,13 @@ namespace BTCPayServer.Hosting
         public static IApplicationBuilder UsePayServer(this IApplicationBuilder app)
         {
             app.UseMiddleware<BTCPayMiddleware>();
-            
-            app.UseOpenApi();
-            app.UseSwaggerUi3();
-            app.UseReDoc(settings => settings.Path= "/docs");
+            app.UseBTCPayOpenApi();
             return app; 
         }
         public static IApplicationBuilder UseHeadersOverride(this IApplicationBuilder app)
         {
             app.UseMiddleware<HeadersOverrideMiddleware>();
             return app;
-        }
-    }
-
-    class X : AspNetCoreOperationSecurityScopeProcessor
-    {
-        private readonly string _authScheme;
-
-        public X(string x, string authScheme): base(x)
-        {
-            _authScheme = authScheme;
-        }
-
-        protected override IEnumerable<string> GetScopes(IEnumerable<AuthorizeAttribute> authorizeAttributes)
-        {
-            var result =  authorizeAttributes
-                .Where(attribute => attribute?.AuthenticationSchemes != null &&  attribute.Policy != null &&
-                                    attribute.AuthenticationSchemes.Equals(_authScheme,
-                                        StringComparison.InvariantCultureIgnoreCase))
-                .Select(attribute => attribute.Policy);
-
-            return result;
         }
     }
 }

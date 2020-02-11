@@ -3,8 +3,10 @@
   <Import Project="../Build/Common.csproj" />
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
     <RazorCompileOnBuild>false</RazorCompileOnBuild>
+    
   </PropertyGroup>
   <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <OutputType>Exe</OutputType>
   </PropertyGroup>
   <ItemGroup>
@@ -120,9 +122,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="Controllers\RestApi\Server" />
 	  <Folder Include="Controllers\RestApi\Stores\Apps" />
-	  <Folder Include="Controllers\RestApi\Users" />
 	  <Folder Include="wwwroot\vendor\clipboard.js\" />
 	  <Folder Include="wwwroot\vendor\highlightjs\" />
 	  <Folder Include="wwwroot\vendor\summernote" />
