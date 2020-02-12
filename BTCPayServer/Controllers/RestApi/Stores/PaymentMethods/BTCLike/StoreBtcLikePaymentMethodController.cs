@@ -8,13 +8,17 @@ using BTCPayServer.Security;
 using BTCPayServer.Services.Stores;
 using BTCPayServer.Services.Wallets;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NBXplorer.DerivationStrategy;
+using NSwag.Annotations;
 
 namespace BTCPayServer.Controllers.RestApi
 {
     [ApiController]
     [IncludeInOpenApiDocs]
+    [OpenApiTags("Store Payment Methods", "On-chain Payment Methods")]
     [Route("api/v1/stores/{storeId}/payment-methods/" + nameof(PaymentTypes.BTCLike))]
     [Authorize(Policy = Policies.CanModifyStoreSettings.Key, AuthenticationSchemes = AuthenticationSchemes.ApiKey)]
     public class StoreBtcLikePaymentMethodController : ControllerBase
@@ -27,7 +31,6 @@ namespace BTCPayServer.Controllers.RestApi
         public StoreBtcLikePaymentMethodController(
             StoreRepository storeRepository,
             BTCPayNetworkProvider btcPayNetworkProvider,
-            ExplorerClientProvider explorerClientProvider, 
             BTCPayWalletProvider walletProvider)
         {
             _storeRepository = storeRepository;
@@ -35,7 +38,11 @@ namespace BTCPayServer.Controllers.RestApi
             _walletProvider = walletProvider;
         }
 
+        /// <param name="enabledOnly">Whether to get payment methods that are enabled only </param>
         [HttpGet("")]
+        [OpenApiOperation("Get derivation schemes", "Get all configured BTCLike payment methods for this store")]
+        [SwaggerResponse(StatusCodes.Status200OK, typeof(StoreBtcLikePaymentMethod[]),
+            Description = "All BTCLike payment method configurations on this store")]
         public ActionResult<IEnumerable<StoreBtcLikePaymentMethod>> GetBtcLikePaymentMethods(
             [FromQuery] bool enabledOnly = false)
         {
@@ -52,7 +59,14 @@ namespace BTCPayServer.Controllers.RestApi
             );
         }
 
+        /// <param name="cryptoCode">Crypto Code</param>
+        /// <returns></returns>
         [HttpGet("{cryptoCode}")]
+        [OpenApiOperation("Get derivation scheme", "Get configured BTCLike payment method by crypto code for this store")]
+        [SwaggerResponse(StatusCodes.Status200OK, typeof(StoreBtcLikePaymentMethod),
+            Description = "BTCLike payment method configuration on this store")]
+        [SwaggerResponse(StatusCodes.Status404NotFound, null,
+            Description = "Crypto code not available")]
         public ActionResult<StoreBtcLikePaymentMethod> GetBtcLikePaymentMethod(string cryptoCode)
         {
             if (!GetCryptoCodeWallet(cryptoCode, out var network, out var wallet))
@@ -64,6 +78,13 @@ namespace BTCPayServer.Controllers.RestApi
         }
 
         [HttpGet("{cryptoCode}/preview")]
+        [OpenApiOperation("Preview addresses of the current derivation scheme", "Preview addresses of the current derivation scheme by crypto code for this store")]
+        [SwaggerResponse(StatusCodes.Status200OK, typeof(StoreBtcLikePaymentMethodPreviewResult),
+            Description = "List of addresses with key paths")]
+        [SwaggerResponse(StatusCodes.Status404NotFound, null,
+            Description = "Crypto code not available")] 
+        [SwaggerResponse(StatusCodes.Status400BadRequest, null,
+            Description = "Not configured")]
         public ActionResult<StoreBtcLikePaymentMethodPreviewResult> GetBtcLikePaymentAddressPreview(string cryptoCode,
             int offset = 0, int amount = 10)
         {
@@ -99,6 +120,13 @@ namespace BTCPayServer.Controllers.RestApi
         }
 
         [HttpPost("{cryptoCode}/preview")]
+        [OpenApiOperation("Preview addresses of the proposed derivation scheme", "Preview addresses of the proposed derivation scheme by crypto code for this store")]
+        [SwaggerResponse(StatusCodes.Status200OK, typeof(StoreBtcLikePaymentMethodPreviewResult),
+            Description = "List of addresses with key paths")]
+        [SwaggerResponse(StatusCodes.Status404NotFound, null,
+            Description = "Crypto code not available")] 
+        [SwaggerResponse(StatusCodes.Status422UnprocessableEntity, typeof(ModelStateDictionary),
+            Description = "Validation error")]
         public ActionResult<StoreBtcLikePaymentMethodPreviewResult> GetBtcLikePaymentAddressPreview(string cryptoCode,
             [FromBody] StoreBtcLikePaymentMethod paymentMethod,
             int offset = 0, int amount = 10)
@@ -133,11 +161,18 @@ namespace BTCPayServer.Controllers.RestApi
             {
                 ModelState.AddModelError(nameof(StoreBtcLikePaymentMethod.DerivationScheme),
                     "Invalid Derivation Scheme");
-                return BadRequest(ModelState);
+                return UnprocessableEntity(ModelState);
             }
         }
 
         [HttpPut("{cryptoCode}")]
+        [OpenApiOperation("Update derivation scheme", "Update derivation scheme for crypto code for this store")]
+        [SwaggerResponse(StatusCodes.Status200OK, typeof(StoreBtcLikePaymentMethod),
+            Description = "BTCLike payment method configuration on this store")]
+        [SwaggerResponse(StatusCodes.Status404NotFound, null,
+            Description = "Crypto code not available")] 
+        [SwaggerResponse(StatusCodes.Status422UnprocessableEntity, typeof(ModelStateDictionary),
+            Description = "Validation error")]
         public async Task<ActionResult<StoreBtcLikePaymentMethod>> UpdateBtcLikePaymentMethod(string cryptoCode,
             [FromBody] StoreBtcLikePaymentMethod paymentMethod)
         {
@@ -165,7 +200,7 @@ namespace BTCPayServer.Controllers.RestApi
             {
                 ModelState.AddModelError(nameof(StoreBtcLikePaymentMethod.DerivationScheme),
                     "Invalid Derivation Scheme");
-                return BadRequest(ModelState);
+                return UnprocessableEntity(ModelState);
             }
         }
 
@@ -177,7 +212,7 @@ namespace BTCPayServer.Controllers.RestApi
         }
         private StoreBtcLikePaymentMethod GetExistingBtcLikePaymentMethod(string cryptoCode, StoreData store = null)
         {
-            store = store ?? Store;
+            store ??= Store;
             var storeBlob = store.GetStoreBlob();
             var defaultPaymentMethod = store.GetDefaultPaymentId(_btcPayNetworkProvider);
             var id = new PaymentMethodId(cryptoCode, PaymentTypes.BTCLike);

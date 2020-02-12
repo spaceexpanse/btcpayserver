@@ -13,6 +13,7 @@ namespace BTCPayServer.Controllers.RestApi
 {
     [ApiController]
     [IncludeInOpenApiDocs]
+    [OpenApiTags("Payment Methods")]
     [Route("api/v1/payment-methods")]
     [Authorize(AuthenticationSchemes = AuthenticationSchemes.ApiKey)]
     public class PaymentMethodsController : ControllerBase
