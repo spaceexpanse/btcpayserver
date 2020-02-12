@@ -35,6 +35,7 @@ namespace BTCPayServer.Controllers.RestApi
         }
 
         [HttpGet("")]
+        [Authorize(Policy = Policies.CanModifyStoreSettings.Key, AuthenticationSchemes = AuthenticationSchemes.ApiKey)]
         public ActionResult<StoreRateConfiguration> GetStoreRateConfiguration()
         {
             var data = HttpContext.GetStoreData();
@@ -50,12 +51,14 @@ namespace BTCPayServer.Controllers.RestApi
         }
 
         [HttpGet("sources")]
+        [Authorize(Policy = Policies.CanModifyStoreSettings.Key, AuthenticationSchemes = AuthenticationSchemes.ApiKey)]
         public ActionResult<Dictionary<string, AvailableRateProvider>> GetAvailableSources()
         {
             return Ok(_rateProviderFactory.RateProviderFactory.GetSupportedExchanges());
         }
 
         [HttpPut("")]
+        [Authorize(Policy = Policies.CanModifyStoreSettings.Key, AuthenticationSchemes = AuthenticationSchemes.ApiKey)]
         public async Task<ActionResult<StoreRateConfiguration>> UpdateStoreRateConfiguration(
             StoreRateConfiguration configuration)
         {
@@ -77,6 +80,7 @@ namespace BTCPayServer.Controllers.RestApi
         }
 
         [HttpPost("preview")]
+        [Authorize(Policy = Policies.CanModifyStoreSettings.Key, AuthenticationSchemes = AuthenticationSchemes.ApiKey)]
         public async Task<ActionResult<IEnumerable<StoreRatePreviewResult>>> PreviewUpdateStoreRateConfiguration(
             StoreRateConfiguration configuration, [FromQuery] string[] currencyPair)
         {

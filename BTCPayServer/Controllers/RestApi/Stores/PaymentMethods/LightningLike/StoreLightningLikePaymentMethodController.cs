@@ -43,6 +43,7 @@ namespace BTCPayServer.Controllers.RestApi
         }
 
         [HttpGet("")]
+        [Authorize(Policy = Policies.CanModifyStoreSettings.Key, AuthenticationSchemes = AuthenticationSchemes.ApiKey)]
         public ActionResult<IEnumerable<StoreLightningLikePaymentMethod>> GetLightningLikePaymentMethods(
             [FromQuery] bool enabledOnly = false)
         {
@@ -60,6 +61,7 @@ namespace BTCPayServer.Controllers.RestApi
         }
 
         [HttpGet("{cryptoCode}")]
+        [Authorize(Policy = Policies.CanModifyStoreSettings.Key, AuthenticationSchemes = AuthenticationSchemes.ApiKey)]
         public ActionResult<StoreLightningLikePaymentMethod> GetLightningLikePaymentMethod(string cryptoCode)
         {
             if (!GetCryptoCodeWallet(cryptoCode, out var network))
@@ -71,6 +73,7 @@ namespace BTCPayServer.Controllers.RestApi
         }
 
         [HttpPut("{cryptoCode}")]
+        [Authorize(Policy = Policies.CanModifyStoreSettings.Key, AuthenticationSchemes = AuthenticationSchemes.ApiKey)]
         public async Task<ActionResult<StoreBtcLikePaymentMethod>> UpdateLightningLikePaymentMethod(string cryptoCode,
             [FromBody] UpdateStoreLightningLikePaymentMethod paymentMethod)
         {
