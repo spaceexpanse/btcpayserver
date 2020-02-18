@@ -262,7 +262,7 @@ namespace BTCPayServer.Hosting
                 }
                 return rateLimits;
             });
-
+			services.AddBTCPayOpenApi();
 
             services.AddLogging(logBuilder =>
             {
@@ -291,6 +291,7 @@ namespace BTCPayServer.Hosting
         public static IApplicationBuilder UsePayServer(this IApplicationBuilder app)
         {
             app.UseMiddleware<BTCPayMiddleware>();
+            app.UseBTCPayOpenApi();
             return app; 
         }
         public static IApplicationBuilder UseHeadersOverride(this IApplicationBuilder app)
