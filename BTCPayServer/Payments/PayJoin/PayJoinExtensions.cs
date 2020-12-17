@@ -4,6 +4,8 @@ using BTCPayServer.Payments.PayJoin.Sender;
 using BTCPayServer.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using BTCPayServer.BIP78.Sender;
+using BTCPayServer.Payments.PayJoin.Receiver;
 
 namespace BTCPayServer.Payments.PayJoin
 {
@@ -14,6 +16,7 @@ namespace BTCPayServer.Payments.PayJoin
             services.AddSingleton<DelayedTransactionBroadcaster>();
             services.AddSingleton<IHostedService, HostedServices.DelayedTransactionBroadcasterHostedService>();
             services.AddSingleton<PayJoinRepository>();
+            services.AddSingleton<BTCPayPayjoinReceiverWallet>();
             services.AddSingleton<IPayjoinServerCommunicator, PayjoinServerCommunicator>();
             services.AddSingleton<PayjoinClient>();
             services.AddTransient<Socks5HttpClientHandler>();

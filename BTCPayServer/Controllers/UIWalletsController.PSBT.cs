@@ -423,7 +423,8 @@ namespace BTCPayServer.Controllers
                                 EnforceLowR = !(vm.SigningContext?.EnforceLowR is false)
                             };
                             var extKey = ExtKey.Parse(vm.SigningKey, network.NBitcoinNetwork);
-                            proposedPayjoin = proposedPayjoin.SignAll(derivationSchemeSettings.AccountDerivation,
+                            proposedPayjoin = proposedPayjoin.SignAll(derivationSchemeSettings.AccountDerivation.ScriptPubKeyType(),
+                                derivationSchemeSettings.AccountDerivation,
                                 extKey,
                                 RootedKeyPath.Parse(vm.SigningKeyPath));
                             vm.SigningContext.PSBT = proposedPayjoin.ToBase64();
