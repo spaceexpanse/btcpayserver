@@ -149,6 +149,7 @@
 	  <ProjectReference Include="..\BTCPayServer.Common\BTCPayServer.Common.csproj" />
 	  <ProjectReference Include="..\Plugins\BTCPayServer.Plugins.Custodians.FakeCustodian\BTCPayServer.Plugins.Custodians.FakeCustodian.csproj" />
 	  <ProjectReference Include="..\Plugins\BTCPayServer.Plugins.LiquidPlus\BTCPayServer.Plugins.LiquidPlus.csproj" />
+	  <ProjectReference Include="..\Plugins\BTCPayServer.Plugins.RockstarStylist\BTCPayServer.Plugins.RockstarStylist.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
