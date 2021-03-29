@@ -7,6 +7,7 @@ using System.Threading;
 using BTCPayServer.Abstractions.Contracts;
 using BTCPayServer.Abstractions.Extensions;
 using BTCPayServer.Abstractions.Models;
+using BTCPayServer.Abstractions.Services;
 using BTCPayServer.Configuration;
 using BTCPayServer.Controllers;
 using BTCPayServer.Data;
@@ -89,6 +90,7 @@ namespace BTCPayServer.Hosting
 #if ALTCOINS
             services.AddMoneroLike();
             services.AddEthereumLike();
+            services.AddSingleton<IUIExtension>(new UIExtension("Liquid/StoreNavLiquidExtension",  "store-nav"));
 #endif
             services.TryAddSingleton<SettingsRepository>();
             services.TryAddSingleton<ISettingsRepository>(provider => provider.GetService<SettingsRepository>());
