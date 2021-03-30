@@ -39,7 +39,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BTCPayServer.PluginPacker",
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BTCPayServer.Plugins.Custodians.FakeCustodian", "Plugins\BTCPayServer.Plugins.Custodians.FakeCustodian\BTCPayServer.Plugins.Custodians.FakeCustodian.csproj", "{49E1FE45-FE71-49DF-8701-8394E974BE82}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BTCPayServer.Plugins.CustomLiquidAssets", "Plugins\BTCPayServer.Plugins.CustomLiquidAssets\BTCPayServer.Plugins.CustomLiquidAssets.csproj", "{4C4FBCE4-D634-4D5F-87E7-5883BB252509}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BTCPayServer.Plugins.LiquidPlus", "Plugins\BTCPayServer.Plugins.LiquidPlus\BTCPayServer.Plugins.LiquidPlus.csproj", "{4C4FBCE4-D634-4D5F-87E7-5883BB252509}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
