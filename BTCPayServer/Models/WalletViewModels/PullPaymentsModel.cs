@@ -52,5 +52,8 @@ namespace BTCPayServer.Models.WalletViewModels
         [Display(Name = "Payment Methods")]
         public IEnumerable<string> PaymentMethods { get; set; }
         public IEnumerable<SelectListItem> PaymentMethodItems { get; set; }
+        
+        [Display(Name = "Minimum payout amount")]
+        public decimal? MinimumAmount { get; set; }
     }
 }

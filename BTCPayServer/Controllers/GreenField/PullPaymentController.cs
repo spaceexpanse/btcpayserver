@@ -75,11 +75,23 @@ namespace BTCPayServer.Controllers.GreenField
             {
                 ModelState.AddModelError(nameof(request.Amount), "The amount should more than 0.");
             }
-            if (request.Name is String name && name.Length > 50)
+            if (request.MinimumAmount != null &&  request.MinimumAmount<= 0.0m)
+            {
+                ModelState.AddModelError(nameof(request.MinimumAmount), "The minimum amount should more than 0.");
+            }
+            if (request.MinimumAmount != null &&  request.MinimumAmount> request.Amount)
+            {
+                ModelState.AddModelError(nameof(request.MinimumAmount), "The minimum amount should be less or equal to Amount");
+            }
+            if (request.MinimumAmount != null &&   request.Amount % request.MinimumAmount != 0)
+            {
+                ModelState.AddModelError(nameof(request.MinimumAmount), "The amount should be fully divisible by minimum amount");
+            }
+            if (request.Name is { } name && name.Length > 50)
             {
                 ModelState.AddModelError(nameof(request.Name), "The name should be maximum 50 characters.");
             }
-            if (request.Currency is String currency)
+            if (request.Currency is { } currency)
             {
                 request.Currency = currency.ToUpperInvariant().Trim();
                 if (_currencyNameTable.GetCurrencyData(request.Currency, false) is null)
@@ -131,7 +143,8 @@ namespace BTCPayServer.Controllers.GreenField
                 Amount = request.Amount,
                 Currency = request.Currency,
                 StoreId = storeId,
-                PaymentMethodIds = paymentMethods
+                PaymentMethodIds = paymentMethods,
+                MinimumAmount = request.MinimumAmount
             });
             var pp = await _pullPaymentService.GetPullPayment(ppId, false);
             return this.Ok(CreatePullPaymentData(pp));
@@ -146,6 +159,7 @@ namespace BTCPayServer.Controllers.GreenField
                 StartsAt = pp.StartDate,
                 ExpiresAt = pp.EndDate,
                 Amount = ppBlob.Limit,
+                MinimumAmount = ppBlob.MinimumClaim,
                 Name = ppBlob.Name,
                 Currency = ppBlob.Currency,
                 Period = ppBlob.Period,

@@ -69,6 +69,12 @@
                                         "example": "0.1",
                                         "description": "The amount in `currency` of this pull payment as a decimal string"
                                     },
+                                    "minimumAmount": {
+                                        "type": "string",
+                                        "format": "decimal",
+                                        "example": "0.1",
+                                        "description": "The minimum amount in `currency` that a payout can be created for this pull payment. Set to `amount` value to only allow completing the pull payment in one transaction."
+                                    },
                                     "currency": {
                                         "type": "string",
                                         "example": "BTC",

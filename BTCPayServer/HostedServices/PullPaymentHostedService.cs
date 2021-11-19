@@ -28,6 +28,7 @@ namespace BTCPayServer.HostedServices
         public string StoreId { get; set; }
         public string Name { get; set; }
         public decimal Amount { get; set; }
+        public decimal? MinimumAmount { get; set; }
         public string Currency { get; set; }
         public string CustomCSSLink { get; set; }
         public string EmbeddedCSS { get; set; }
@@ -104,6 +105,7 @@ namespace BTCPayServer.HostedServices
             o.SetBlob(new PullPaymentBlob()
             {
                 Name = create.Name ?? string.Empty,
+                MinimumClaim = create.MinimumAmount ?? 0m,
                 Currency = create.Currency,
                 Limit = create.Amount,
                 Period = o.Period is long periodSeconds ? (TimeSpan?)TimeSpan.FromSeconds(periodSeconds) : null,

@@ -9,16 +9,24 @@ namespace BTCPayServer.Client.Models
     {
         [JsonConverter(typeof(NBitcoin.JsonConverters.DateTimeToUnixTimeConverter))]
         public DateTimeOffset StartsAt { get; set; }
+
         [JsonConverter(typeof(NBitcoin.JsonConverters.DateTimeToUnixTimeConverter))]
         public DateTimeOffset? ExpiresAt { get; set; }
+
         public string Id { get; set; }
         public string Name { get; set; }
         public string Currency { get; set; }
+
         [JsonConverter(typeof(NumericStringJsonConverter))]
         public decimal Amount { get; set; }
+
         [JsonConverter(typeof(TimeSpanJsonConverter.Seconds))]
         public TimeSpan? Period { get; set; }
+
         public bool Archived { get; set; }
         public string ViewLink { get; set; }
+
+        [JsonConverter(typeof(NumericStringJsonConverter))]
+        public decimal? MinimumAmount { get; set; }
     }
 }

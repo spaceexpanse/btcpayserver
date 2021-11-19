@@ -108,6 +108,19 @@ namespace BTCPayServer.Controllers
             {
                 ModelState.AddModelError(nameof(model.Amount), "The amount should be more than zero");
             }
+            if (model.MinimumAmount != null &&  model.MinimumAmount<= 0.0m)
+            {
+                ModelState.AddModelError(nameof(model.MinimumAmount), "The minimum amount should more than 0.");
+            }
+            if (model.MinimumAmount != null &&  model.MinimumAmount> model.Amount)
+            {
+                ModelState.AddModelError(nameof(model.MinimumAmount), "The minimum amount should be less or equal to Amount");
+            }
+            if (model.MinimumAmount != null &&   model.Amount % model.MinimumAmount != 0)
+            {
+                ModelState.AddModelError(nameof(model.MinimumAmount), "The amount should be fully divisible by minimum amount");
+            }
+            
             if (model.Name.Length > 50)
             {
                 ModelState.AddModelError(nameof(model.Name), "The name should be maximum 50 characters.");
@@ -124,6 +137,7 @@ namespace BTCPayServer.Controllers
             {
                 Name = model.Name,
                 Amount = model.Amount,
+                MinimumAmount = model.MinimumAmount,
                 Currency = model.Currency,
                 StoreId = storeId,
                 PaymentMethodIds = selectedPaymentMethodIds,

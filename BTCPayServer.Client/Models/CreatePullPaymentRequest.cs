@@ -10,6 +10,8 @@ namespace BTCPayServer.Client.Models
         public string Name { get; set; }
         [JsonProperty(ItemConverterType = typeof(NumericStringJsonConverter))]
         public decimal Amount { get; set; }
+        [JsonConverter(typeof(NumericStringJsonConverter))]
+        public decimal? MinimumAmount { get; set; }
         public string Currency { get; set; }
         [JsonConverter(typeof(TimeSpanJsonConverter.Seconds))]
         public TimeSpan? Period { get; set; }
