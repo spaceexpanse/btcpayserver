@@ -30,6 +30,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NBitcoin;
 using NBitcoin.DataEncoders;
+using NBitcoin.OpenAsset;
 using NBitcoin.Payment;
 using Newtonsoft.Json.Linq;
 using OpenQA.Selenium;
@@ -1251,6 +1252,34 @@ namespace BTCPayServer.Tests
                 s.Driver.FindElement(By.Id($"{PayoutState.Completed}-view")).Click();
                 Assert.Contains(bolt, s.Driver.PageSource);
             }
+            
+            s.GoToStore(newStore.storeId, StoreNavPages.PullPayments);
+
+            s.Driver.FindElement(By.Id("NewPullPayment")).Click();
+            s.Driver.FindElement(By.Id("Name")).SendKeys("Min Amount test");
+            s.Driver.FindElement(By.Id("Amount")).Clear();
+            s.Driver.FindElement(By.Id("Amount")).SendKeys("1");
+            s.Driver.FindElement(By.Id("MinimumAmount")).SendKeys("1");
+            s.Driver.FindElement(By.Id("Currency")).Clear();
+            s.Driver.FindElement(By.Id("Currency")).SendKeys("BTC");
+            s.Driver.FindElement(By.Id("Create")).Click();
+            s.Driver.FindElement(By.LinkText("View")).Click();
+            Assert.Equal("hidden", s.Driver.FindElement(By.Id("ClaimedAmount")).GetAttribute("type"));
+
+            
+            s.GoToStore(newStore.storeId, StoreNavPages.PullPayments);
+            s.Driver.FindElement(By.Id("NewPullPayment")).Click();
+            s.Driver.FindElement(By.Id("Name")).SendKeys("Min Amount test2 ");
+            s.Driver.FindElement(By.Id("Amount")).Clear();
+            s.Driver.FindElement(By.Id("Amount")).SendKeys("1");
+            s.Driver.FindElement(By.Id("MinimumAmount")).SendKeys("0.1");
+            s.Driver.FindElement(By.Id("Currency")).Clear();
+            s.Driver.FindElement(By.Id("Currency")).SendKeys("BTC");
+            s.Driver.FindElement(By.Id("Create")).Click();
+            s.Driver.FindElement(By.LinkText("View")).Click();
+            Assert.Equal("0.1", s.Driver.FindElement(By.Id("ClaimedAmount")).GetAttribute("min"));
+            
+            
         }
 
         [Fact]

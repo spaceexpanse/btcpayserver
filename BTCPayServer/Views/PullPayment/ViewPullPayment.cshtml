@@ -50,11 +50,12 @@
     <div class="min-vh-100 d-flex flex-column">
         @if (Model.IsPending)
         {
+            var showAmountField = Model.MinimumClaim != Model.AmountDue;
             <nav id="mainNav" class="navbar sticky-top py-3 py-lg-4 d-print-none">
                 <div class="container">
                     <form asp-action="ClaimPullPayment" asp-route-pullPaymentId="@Model.Id" class="w-100">
                         <div class="row align-items-center" style="width:calc(100% + 30px)">
-                            <div class="col-12 mb-3 col-lg-6 mb-lg-0">
+                            <div class="col-12 mb-3 @(showAmountField? "col-lg-6": "") mb-lg-0">
                                 <div class="input-group">
                                     <input class="form-control form-control-lg font-monospace" asp-for="Destination" placeholder="Enter destination to claim funds" required style="font-size:.9rem;height:42px;">
                                     @if (Model.PaymentMethods.Length == 1)
@@ -69,7 +70,7 @@
                                 </div>
                             </div>
 
-                            @if (Model.MinimumClaim != Model.AmountDue)
+                            @if (showAmountField)
                             {
                                 <div class="col-12 mb-3 col-sm-6 mb-sm-0 col-lg-3">
                                     <div class="input-group">
