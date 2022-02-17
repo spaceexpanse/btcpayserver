@@ -2465,7 +2465,7 @@ namespace BTCPayServer.Tests
 
         [Fact(Timeout = TestTimeout)]
         [Trait("Integration", "Integration")]
-        public async Task CustodianGenericTests()
+        public async Task CustodianTests()
         {
             using var tester = CreateServerTester();
             await tester.StartAsync();
