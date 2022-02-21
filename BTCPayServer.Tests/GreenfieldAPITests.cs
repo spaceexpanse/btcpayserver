@@ -2339,7 +2339,7 @@ namespace BTCPayServer.Tests
    'BTC-OnChain': 'My Ledger Nano'
 },
 'ApiKey': 'APIKEY',
-'PrivateKey': 'PRIVATEKEY'
+'PrivateKey': 'UFJJVkFURUtFWQ=='
 }");
             
             var createCustodianAccountRequest = new CreateCustodianAccountRequest();
