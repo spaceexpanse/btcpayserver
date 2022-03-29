@@ -499,7 +499,7 @@ namespace BTCPayServer.Controllers
         }
 
         [HttpGet("i/{invoiceId}")]
-        [HttpGet("i/{invoiceId}/{paymentMethodId}")]
+        [HttpGet("i/{invoiceId}/{paymentMethodId}", Order = 1)]
         [HttpGet("invoice")]
         [AcceptMediaTypeConstraint("application/bitcoin-paymentrequest", false)]
         [XFrameOptionsAttribute(null)]

@@ -190,7 +190,7 @@ namespace BTCPayServer
             var lightningAddressSettings = await GetSettings();
             if (!lightningAddressSettings.Items.TryGetValue(username.ToLowerInvariant(), out var item))
             {
-                return NotFound("Unknown username");
+                return await GetLNURLForInvoice(username, "BTC");
             }
 
             return await GetLNURL("BTC", item.StoreId, item.CurrencyCode, item.Min, item.Max,

@@ -1,0 +1,130 @@
+﻿@model object
+
+@{
+    
+    ExpandoObject ToExpando(object anonymousObject)
+    {
+        IDictionary<string, object> anonymousDictionary =  new RouteValueDictionary(anonymousObject);
+        IDictionary<string, object> expando = new ExpandoObject();
+        foreach (var item in anonymousDictionary)
+            expando.Add(item);
+        return (ExpandoObject)expando;
+    }
+
+    
+    dynamic x = ToExpando(Model);
+    Layout = null;
+    var theme = await _settingsRepository.GetTheme();
+    var invoiceId = (string) Context.GetRouteValue("invoiceId");
+    var address = $"{invoiceId}@{Context.Request.GetAbsoluteRootUri().Authority}";
+}
+
+
+@addTagHelper *, BundlerMinifier.TagHelpers
+@inject ISettingsRepository _settingsRepository
+
+@using BTCPayServer.Abstractions.Contracts
+@using BTCPayServer.Controllers
+@using System.Dynamic
+<!DOCTYPE html>
+<html>
+<head>
+    <title>@invoiceId</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <link rel="apple-touch-icon" href="~/img/icons/icon-512x512.png" asp-append-version="true">
+    <link rel="apple-touch-startup-image" href="~/img/splash.png" asp-append-version="true">
+    <link rel="manifest" href="~/manifest.json">
+    <bundle name="wwwroot/bundles/main-bundle.min.css" asp-append-version="true"/>
+    <link href="@Context.Request.GetRelativePathOrAbsolute(theme.CssUri)" rel="stylesheet" asp-append-version="true"/>
+    <link href="~/main/qrcode.css" rel="stylesheet" asp-append-version="true"/>
+</head>
+<body>
+<div id="app" class="container">
+    <div class="row" style="height:100vh">
+        <div class="col-md-8 col-sm-12 col-lg-6 mx-auto my-auto">
+            <div class="card border-0">
+                <div class="card-body p-4">
+                    <h1 class="card-title text-center mt-3">@invoiceId</h1>
+                    <h2 class="h3 card-subtitle text-center text-secondary my-3">
+                        Unified Address Checkout
+                    </h2>
+                    @if (x.Price != 0)
+                    {
+                        <h4 class="text-center">
+                            
+                            <span>
+                               @x.Price @x.Currency
+                            </span>
+                        </h4>
+                    }
+                    <div class="qr-container my-4 w-100">
+                        <vc:qr-code data="@address"/>
+                    </div>
+                    <div class="input-group" data-clipboard="@address">
+                        <input type="text" class="form-control" style="cursor:copy" readonly="readonly" value="@address"/>
+                        <button type="button" class="btn btn-outline-secondary" data-clipboard-confirm>Copy</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<partial name="LayoutFoot"/>
+
+
+<script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var socket = null;
+            var supportsWebSockets = 'WebSocket' in window && window.WebSocket.CLOSING === 2;
+            if (supportsWebSockets) {
+                var loc = window.location, ws_uri;
+                if (loc.protocol === "https:") {
+                    ws_uri = "wss:";
+                } else {
+                    ws_uri = "ws:";
+                }
+                ws_uri += "//" + loc.host;
+                ws_uri += loc.pathname + "/status/ws?invoiceId=@invoiceId";
+                try {
+                    socket = new WebSocket(ws_uri);
+                    socket.onmessage = function (e) {
+                        if (e.data === "ping")
+                            return;
+                        fetchData();
+                    };
+                    socket.onerror = function (e) {
+                        console.error("Error while connecting to websocket for invoice notifications (callback)");
+                    };
+                }
+                catch (e) {
+                    console.error("Error while connecting to websocket for invoice notifications");
+                }
+            }            
+        });
+        function watcher(){
+            setTimeout(async function(){
+                if (socket === null || socket.readyState !== 1) {
+                    await fetchData();
+                }
+                watcher();
+            }, 2000);
+        }
+        function fetchData(){
+            fetch(window.location.pathname + "/status?invoiceId=@invoiceId")
+              .then(response => response.json())
+              .then(data => {
+                if (data.status !== "new"){
+                    
+                  window.location.href = @Safe.Json(Url.Action("Checkout", new {invoiceId}));
+                }
+            })
+            
+        }
+        
+        watcher();
+</script>
+
+</body>
+</html>
