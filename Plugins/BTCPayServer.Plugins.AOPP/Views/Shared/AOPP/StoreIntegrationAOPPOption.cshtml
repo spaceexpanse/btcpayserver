@@ -1,11 +1,10 @@
-@using BTCPayServer.Client
+@using BTCPayServer.Abstractions.Contracts
 @using BTCPayServer.Plugins.AOPP
-@using Microsoft.AspNetCore.Routing
-@inject BTCPayServerClient BTCPayServerClient
+@using Microsoft.AspNetCore.Mvc.TagHelpers
 @inject AOPPService AOPPService
+@inject IScopeProvider ScopeProvider
 @{
-    var storeId = Context.GetRouteValue("storeId")?.ToString();
-
+    var storeId = ScopeProvider.GetCurrentStoreId();
     AOPPSettings settings = null;
     if (!string.IsNullOrEmpty(storeId))
     {
@@ -38,7 +37,7 @@
                         Enabled
                     </span>
                     <span class="text-light ms-3 me-2">|</span>
-                    <a lass="btn btn-link px-1 py-1 fw-semibold" asp-controller="AOPP" asp-action="UpdateAOPPSettings" asp-route-storeId="@Context.GetRouteValue("storeId")">
+                    <a lass="btn btn-link px-1 py-1 fw-semibold" asp-controller="AOPP" asp-action="UpdateAOPPSettings" asp-route-storeId="@storeId">
                         Modify
                     </a>
                 }
@@ -48,7 +47,7 @@
                         <span class="me-2 btcpay-status btcpay-status--disabled"></span>
                         Disabled
                     </span>
-                    <a class="btn btn-primary btn-sm ms-4 px-3 py-1 fw-semibold" asp-controller="AOPP" asp-action="UpdateAOPPSettings" asp-route-storeId="@Context.GetRouteValue("storeId")">
+                    <a class="btn btn-primary btn-sm ms-4 px-3 py-1 fw-semibold" asp-controller="AOPP" asp-action="UpdateAOPPSettings" asp-route-storeId="@storeId">
                         Setup
                     </a>
                 }

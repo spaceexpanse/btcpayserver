@@ -1,7 +1,8 @@
+@using BTCPayServer.Abstractions.Contracts
 @using BTCPayServer.Plugins.AOPP
-@using Microsoft.AspNetCore.Routing
+@inject IScopeProvider ScopeProvider
 @{
-    var storeId = Context.GetRouteValue("storeId")?.ToString();
+    var storeId = ScopeProvider.GetCurrentStoreId();
     var isActive = !string.IsNullOrEmpty(storeId) && ViewContext.RouteData.Values.TryGetValue("Controller", out var controller) &&  controller is not null && 
                    nameof(AOPPController).StartsWith(controller.ToString(), StringComparison.InvariantCultureIgnoreCase);
 }
