@@ -10,7 +10,6 @@ public class UpdateTicketTailorSettingsViewModel
     public SelectList Events { get; set; }
     public string EventId { get; set; }
     public bool ShowDescription { get; set; }
-    public bool ShowEmbedForm { get; set; }
     public string CustomCSS { get; set; }
     public TicketTailorClient.TicketType[] TicketTypes { get; set; }
 
