@@ -7,14 +7,12 @@ namespace BTCPayServer.Plugins.FixedFloat
 {
     public class FixedFloatPlugin : BaseBTCPayServerPlugin
     {
-        public const string StoreBlobKey = "FixedFloatSettings";
         public override string Identifier => "BTCPayServer.Plugins.FixedFloat";
         public override string Name => "FixedFloat";
-
-
+        
         public override IBTCPayServerPlugin.PluginDependency[] Dependencies { get; } =
         {
-            new IBTCPayServerPlugin.PluginDependency() { Identifier = nameof(BTCPayServer), Condition = ">=1.4.6.0" }
+            new() { Identifier = nameof(BTCPayServer), Condition = ">=1.6.0.0" }
         };
 
         public override string Description =>
@@ -40,4 +38,5 @@ namespace BTCPayServer.Plugins.FixedFloat
             base.Execute(applicationBuilder);
         }
     }
+
 }

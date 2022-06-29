@@ -1,7 +1,6 @@
 using BTCPayServer.Abstractions.Contracts;
 using BTCPayServer.Abstractions.Models;
 using BTCPayServer.Abstractions.Services;
-using BTCPayServer.Plugins.TicketTailor;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace BTCPayServer.Plugins.TicketTailor
@@ -14,7 +13,7 @@ namespace BTCPayServer.Plugins.TicketTailor
 
         public override IBTCPayServerPlugin.PluginDependency[] Dependencies { get; } =
         {
-            new() { Identifier = nameof(BTCPayServer), Condition = ">=1.5.2.0" }
+            new() { Identifier = nameof(BTCPayServer), Condition = ">=1.6.0.0" }
         };
 
         public override string Description =>
