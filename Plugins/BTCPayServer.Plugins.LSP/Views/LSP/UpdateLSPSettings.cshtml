@@ -1,15 +1,13 @@
 ﻿@using BTCPayServer.Abstractions.Extensions
-@using BTCPayServer.Client
-@using BTCPayServer.Plugins.LSP
-@using Microsoft.AspNetCore.Routing
+@using Microsoft.AspNetCore.Mvc.TagHelpers
+@using BTCPayServer.Abstractions.Contracts
 @model BTCPayServer.Plugins.LSP.LSPSettings
-@inject BTCPayServerClient _btcPayServerClient
+@inject IScopeProvider ScopeProvider
 @{
+    var storeId = ScopeProvider.GetCurrentStoreId();
     Layout = "../Shared/_NavLayout.cshtml";
     ViewData["NavPartialName"] = "../UIStores/_Nav";
     ViewData.SetActivePage("LSP", "Update Store LSP Settings", null);
-    var storeId = (string) Context.GetRouteValue("storeId");
-
 }
 
 <h2 class="mt-1 mb-4">@ViewData["Title"]</h2>

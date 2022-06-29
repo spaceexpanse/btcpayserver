@@ -1,14 +1,16 @@
 ﻿@using BTCPayServer.Abstractions.Extensions
 @using BTCPayServer.Client
 @using BTCPayServer.Plugins.TicketTailor
+@using Microsoft.AspNetCore.Mvc.TagHelpers
 @using Microsoft.AspNetCore.Routing
+@using BTCPayServer.Abstractions.Contracts
 @model BTCPayServer.Plugins.TicketTailor.UpdateTicketTailorSettingsViewModel
-@inject BTCPayServerClient _btcPayServerClient
+@inject IScopeProvider ScopeProvider
 @{
+    var storeId = ScopeProvider.GetCurrentStoreId();
     Layout = "../Shared/_NavLayout.cshtml";
     ViewData["NavPartialName"] = "../UIStores/_Nav";
     ViewData.SetActivePage("TicketTailor", "Update Store TicketTailor Settings", null);
-    var storeId = (string) Context.GetRouteValue("storeId");
     Model.SpecificTickets ??= new List<SpecificTicket>();
 
 }
