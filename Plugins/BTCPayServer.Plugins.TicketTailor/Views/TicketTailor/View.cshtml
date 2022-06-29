@@ -134,23 +134,7 @@ footer {
             </div>
         </form>
 
-        @if (Model.Settings.ShowEmbedForm)
-        {
-            csp.Add("script-src", "https://tickettailor.com");
-            csp.Add("script-src", "*.tickettailor.com");
-            var internalId = Model.Event.Id.Substring(Model.Event.Id.IndexOf("_") + 1);
-            <div class="row bg-dark  justify-content-center" id="embed-ticket-container">
-                <div class="col-sm-12 col-md-8">
-                    <div class="tt-widget">
-                        <div class="tt-widget-fallback">
-                            <p>
-                                <a href="https://www.tickettailor.com/checkout/new-session/id/@internalId/chk/fb59/" target="_blank">Click here to buy tickets</a><br/>
-                            </p>
-                        </div><script src="https://cdn.tickettailor.com/js/widgets/min/widget.js" data-url="https://www.tickettailor.com/checkout/new-session/id/@internalId/chk/fb59/" data-type="inline" data-inline-minimal="true" data-inline-show-logo="false" data-inline-bg-fill="false" data-inline-inherit-ref-from-url-param="" data-inline-ref=""></script>
-                    </div>
-                </div>
-            </div>
-        }
+       
         <div class="row">
             <div class="col-12" id="fiat-page-link">
                 <a href="@Model.Event.Url">Back to fiat ticket page</a>

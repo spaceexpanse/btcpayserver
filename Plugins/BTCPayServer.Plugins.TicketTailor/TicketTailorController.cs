@@ -205,7 +205,6 @@ namespace BTCPayServer.Plugins.TicketTailor
                 {
                     vm.ApiKey = TicketTailor.ApiKey;
                     vm.EventId = TicketTailor.EventId;
-                    vm.ShowEmbedForm = TicketTailor.ShowEmbedForm;
                     vm.ShowDescription = TicketTailor.ShowDescription;
                     vm.BypassAvailabilityCheck = TicketTailor.BypassAvailabilityCheck;
                     vm.CustomCSS = TicketTailor.CustomCSS;
@@ -301,7 +300,6 @@ namespace BTCPayServer.Plugins.TicketTailor
             {
                 ApiKey = vm.ApiKey,
                 EventId = vm.EventId,
-                ShowEmbedForm = vm.ShowEmbedForm,
                 ShowDescription = vm.ShowDescription,
                 CustomCSS = vm.CustomCSS,
                 SpecificTickets = vm.SpecificTickets,
