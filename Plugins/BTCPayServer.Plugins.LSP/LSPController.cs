@@ -57,7 +57,7 @@ namespace BTCPayServer.Plugins.LSP
                     return RedirectToAction("View", new {storeId});
                 }
 
-                var price = (config.FeePerSat == 0 ? 0 : (config.FeePerSat * inbound)) + config.BaseFee;
+                var price = Math.Ceiling((config.FeePerSat == 0 ? 0 : (config.FeePerSat * inbound)) + config.BaseFee);
                 var btcpayClient = await CreateClient(storeId);
                 var redirectUrl = Request.GetAbsoluteUri(Url.Action("Connect",
                     "LSP", new {storeId, invoiceId = "kukkskukkskukks"}));
@@ -77,7 +77,12 @@ namespace BTCPayServer.Plugins.LSP
                         },
                         Metadata = JObject.FromObject(new
                         {
-                            buyerEmail = email, privateChannel, inbound, orderId = "LSP"
+                            buyerEmail = email, 
+                            privateChannel, 
+                            inbound, 
+                            config.BaseFee,
+                            config.FeePerSat,
+                            orderId = "LSP"
                         })
                     });
 
@@ -106,7 +111,8 @@ namespace BTCPayServer.Plugins.LSP
             var btcpayClient = await CreateClient(storeId);
             try
             {
-                var result = new LSPReceiptPage() {InvoiceId = invoiceId};
+                var config = await _LSPService.GetLSPForStore(storeId);
+                var result = new LSPConnectPage() {InvoiceId = invoiceId, Settings = config};
                 var invoice = await btcpayClient.GetInvoice(storeId, invoiceId);
                 result.Status = invoice.Status;
                 if (invoice.Status != InvoiceStatus.Settled) return View(result);
@@ -115,11 +121,11 @@ namespace BTCPayServer.Plugins.LSP
                     return Redirect(invoice.CheckoutLink);
                 }
 
-                var info = await btcpayClient.GetLightningNodeInfo(storeId, "BTC");
                 
+                result.Invoice = invoice;
                 result.LNURL = LNURL.LNURL.EncodeUri(new Uri(Request.GetAbsoluteUri(Url.Action(
                     "LNURLChannelRequest",
-                    "LSP", new {storeId, invoiceId, nodeUri = info.NodeURIs.OrderBy(nodeInfo => nodeInfo.IsTor).First().NodeId.ToString()}))), "channelRequest", true).ToString();
+                    "LSP", new {storeId, invoiceId}))), "channelRequest", true).ToString();
 
                 return View(result);
             }
@@ -141,16 +147,15 @@ namespace BTCPayServer.Plugins.LSP
                 });
         }
 
-        public class LSPReceiptPage
+        public class LSPConnectPage
         {
             public string LNURL;
             public string InvoiceId { get; set; }
             public InvoiceStatus Status { get; set; }
             public LSPSettings Settings { get; set; }
+            public InvoiceData Invoice { get; set; }
         }
-
-
-        private readonly IHttpClientFactory _httpClientFactory;
+        
         private readonly LSPService _LSPService;
         private readonly IBTCPayServerClientFactory _btcPayServerClientFactory;
 
@@ -158,7 +163,6 @@ namespace BTCPayServer.Plugins.LSP
             LSPService LSPService,
             IBTCPayServerClientFactory btcPayServerClientFactory)
         {
-            _httpClientFactory = httpClientFactory;
             _LSPService = LSPService;
             _btcPayServerClientFactory = btcPayServerClientFactory;
         }
@@ -203,8 +207,7 @@ namespace BTCPayServer.Plugins.LSP
                     return View(vm);
             }
         }
-
-
+        
 
         [AllowAnonymous]
         [HttpGet("lnurlc-callback")]
@@ -282,17 +285,17 @@ namespace BTCPayServer.Plugins.LSP
             {
                 return BadRequest();
             }
-
-
             return Ok(new LNURL.LNURLChannelRequest()
             {
                 Tag = "channelRequest",
                 K1 = invoiceId,
                 Callback = new Uri(Request.GetAbsoluteUri(Url.Action("LNURLChannelRequestCallback",
                     "LSP", new {storeId}))),
-                Uri = NodeInfo.Parse(nodeUri)
+                Uri = nodeUri is null
+                    ? (await btcPayClient.GetLightningNodeInfo(storeId, "BTC")).NodeURIs
+                    .OrderBy(nodeInfo => nodeInfo.IsTor).First()
+                    : NodeInfo.Parse(nodeUri)
             });
-            
         }
     }
 }
