@@ -41,7 +41,9 @@ namespace BTCPayServer.Plugins.AOPP
 
         public async Task SetAOPPForStore(string storeId, AOPPSettings AOPPSettings)
         {
+            var k = $"{nameof(AOPPSettings)}_{storeId}";
             await _storeRepository.UpdateSetting(storeId, nameof(AOPPSettings), AOPPSettings);
+            _memoryCache.Set(k, AOPPSettings);
         }
 
 

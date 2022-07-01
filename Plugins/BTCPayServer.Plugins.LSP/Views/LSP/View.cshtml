@@ -1,10 +1,15 @@
 ﻿@using Microsoft.AspNetCore.Routing
 @using BTCPayServer.Plugins.LSP
 @model BTCPayServer.Plugins.LSP.LSPViewModel
-
-@inject BTCPayServer.Security.ContentSecurityPolicies csp;
+@inject ContentSecurityPolicies contentSecurityPolicies
+@using BTCPayServer.Security
+@using NBitcoin
 @{
+    var nonce = RandomUtils.GetUInt256().ToString().Substring(0, 32);
+    contentSecurityPolicies.Add("script-src", $"'nonce-{nonce}'");
+    contentSecurityPolicies.AllowUnsafeHashes();
     Layout = "_LayoutSimple";
+
 }
 <style>
 footer {
@@ -16,6 +21,18 @@ footer {
  }
 
 </style>
+<script nonce="@nonce">
+const baseFee = @Model.Settings.BaseFee ;
+const rate = @Model.Settings.FeePerSat ;
+document.addEventListener("DOMContentLoaded", function () {
+    document.getElementById("inbound").addEventListener("input", ev => {
+        const inbound = ev.target.value;
+        const cost = baseFee + ( rate ===0? 0 : (rate * inbound));
+        document.getElementById("cost").textContent = `Cost: ${cost} sats`;
+    });
+});
+</script>
+
 <div class="container d-flex h-100">
     <div class="justify-content-center align-self-center text-center mx-auto px-2 py-3 w-100 m-auto">
         <partial name="_StatusMessage"/>
@@ -38,9 +55,18 @@ footer {
                 </div>
                 <div class="col-sm-12  col-md-8">
                     <div class="form-floating">
-                        <input required type="number" name="inbound" min="@Model.Settings.Minimum" max="@Model.Settings.Maximum" class="form-control"/>
+                        <input required type="number" id="inbound" name="inbound" value="@Model.Settings.Minimum" min="@Model.Settings.Minimum" max="@Model.Settings.Maximum" class="form-control"/>
                         <label >Inbound Sats</label>
                     </div>
+                </div>
+
+                <div class="col-sm-12  col-md-8">
+                    <span>Base fee: @Model.Settings.BaseFee sats, fee per inbound sat: @Model.Settings.FeePerSat sats</span>
+                    <span id="cost"></span>
+                </div>
+                <div class="col-sm-12 col-md-6 offset-md-3">
+
+                    <button type="submit" class="btn btn-primary btn-lg">Purchase</button>
                 </div>
             </div>
         </form>

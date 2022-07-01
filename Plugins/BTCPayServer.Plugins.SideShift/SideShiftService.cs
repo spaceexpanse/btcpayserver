@@ -41,7 +41,9 @@ namespace BTCPayServer.Plugins.SideShift
 
         public async Task SetSideShiftForStore(string storeId, SideShiftSettings SideShiftSettings)
         {
+            var k = $"{nameof(SideShiftSettings)}_{storeId}";
             await _storeRepository.UpdateSetting(storeId, nameof(SideShiftSettings), SideShiftSettings);
+            _memoryCache.Set(k, SideShiftSettings);
         }
     }
 }

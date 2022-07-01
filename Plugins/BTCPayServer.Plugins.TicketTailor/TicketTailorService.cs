@@ -41,6 +41,8 @@ public class TicketTailorService
 
     public async Task SetTicketTailorForStore(string storeId, TicketTailorSettings TicketTailorSettings)
     {
+        var k = $"{nameof(TicketTailorSettings)}_{storeId}";
         await _storeRepository.UpdateSetting(storeId, nameof(TicketTailorSettings), TicketTailorSettings);
+        _memoryCache.Set(k, TicketTailorSettings);
     }
 }

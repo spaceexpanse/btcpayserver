@@ -38,7 +38,9 @@ namespace BTCPayServer.Plugins.FixedFloat
 
         public async Task SetFixedFloatForStore(string storeId, FixedFloatSettings fixedFloatSettings)
         {
-            await _storeRepository.UpdateSetting(storeId, nameof(fixedFloatSettings), fixedFloatSettings);
+            var k = $"{nameof(FixedFloatSettings)}_{storeId}";
+            await _storeRepository.UpdateSetting(storeId, nameof(FixedFloatSettings), fixedFloatSettings);
+            _memoryCache.Set(k, fixedFloatSettings);
         }
     }
 }
