@@ -26,10 +26,15 @@ const baseFee = @Model.Settings.BaseFee ;
 const rate = @Model.Settings.FeePerSat ;
 document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("inbound").addEventListener("input", ev => {
-        const inbound = ev.target.value;
-        const cost = baseFee + ( rate ===0? 0 : (rate * inbound));
-        document.getElementById("cost").textContent = `Cost: ${cost} sats`;
+        compute(ev.target.value);
     });
+    
+    function compute(inbound){
+        const cost = Math.ceil(baseFee + ( rate ===0? 0 : (rate * inbound)));
+        document.getElementById("cost").textContent = `Cost: ${cost} sats`;
+    }
+    compute(document.getElementById("inbound").value);
+    
 });
 </script>
 
@@ -61,11 +66,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 </div>
 
                 <div class="col-sm-12  col-md-8">
-                    <span>Base fee: @Model.Settings.BaseFee sats, fee per inbound sat: @Model.Settings.FeePerSat sats</span>
-                    <span id="cost"></span>
+                    <p class="mb-0">Base fee: @Model.Settings.BaseFee sats, fee per inbound sat: @Model.Settings.FeePerSat sats</p>
+                    <p class="mb-2 w-100" id="cost"></p>
                 </div>
-                <div class="col-sm-12 col-md-6 offset-md-3">
-
+                <div class="col-sm-12 col-md-6">
                     <button type="submit" class="btn btn-primary btn-lg">Purchase</button>
                 </div>
             </div>
