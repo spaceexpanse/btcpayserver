@@ -30,6 +30,8 @@ public class LSPService
 
     public async Task SetLSPForStore(string storeId, LSPSettings lspSettings)
     {
-        await _storeRepository.UpdateSetting(storeId, nameof(lspSettings), lspSettings);
+        var k = $"{nameof(LSPSettings)}_{storeId}";
+        await _storeRepository.UpdateSetting(storeId, nameof(LSPSettings), lspSettings);
+        _memoryCache.Set(k, lspSettings);
     }
 }

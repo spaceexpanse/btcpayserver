@@ -51,15 +51,15 @@ namespace BTCPayServer.Plugins.LSP
             var config = await _LSPService.GetLSPForStore(storeId);
             try
             {
-                if (config?.Enabled is true && !string.IsNullOrEmpty(email) && inbound >= config.Minimum &&
-                    inbound <= config.Maximum)
+                if (config?.Enabled is not true || string.IsNullOrEmpty(email) || inbound < config.Minimum ||
+                    inbound > config.Maximum)
                 {
-                    return View(new LSPViewModel() {Settings = config});
+                    return RedirectToAction("View", new {storeId});
                 }
 
                 var price = (config.FeePerSat == 0 ? 0 : (config.FeePerSat * inbound)) + config.BaseFee;
                 var btcpayClient = await CreateClient(storeId);
-                var redirectUrl = Request.GetAbsoluteUri(Url.Action("Receipt",
+                var redirectUrl = Request.GetAbsoluteUri(Url.Action("Connect",
                     "LSP", new {storeId, invoiceId = "kukkskukkskukks"}));
                 redirectUrl = redirectUrl.Replace("kukkskukkskukks", "{InvoiceId}");
                 var inv = await btcpayClient.CreateInvoice(storeId,
@@ -88,7 +88,7 @@ namespace BTCPayServer.Plugins.LSP
                 }
 
                 if (inv.Status == InvoiceStatus.Settled)
-                    return RedirectToAction("Receipt", new {storeId, invoiceId = inv.Id});
+                    return RedirectToAction("Connect", new {storeId, invoiceId = inv.Id});
                 return Redirect(inv.CheckoutLink);
             }
             catch (Exception e)
@@ -100,8 +100,8 @@ namespace BTCPayServer.Plugins.LSP
 
 
         [AllowAnonymous]
-        [HttpGet("receipt")]
-        public async Task<IActionResult> Receipt(string storeId, string invoiceId)
+        [HttpGet("connect")]
+        public async Task<IActionResult> Connect(string storeId, string invoiceId)
         {
             var btcpayClient = await CreateClient(storeId);
             try
@@ -109,15 +109,17 @@ namespace BTCPayServer.Plugins.LSP
                 var result = new LSPReceiptPage() {InvoiceId = invoiceId};
                 var invoice = await btcpayClient.GetInvoice(storeId, invoiceId);
                 result.Status = invoice.Status;
-                if (invoice.Status == InvoiceStatus.Settled)
+                if (invoice.Status != InvoiceStatus.Settled) return View(result);
+                if (invoice.Metadata.TryGetValue("lsp-channel-complete", out _))
                 {
-                    if (invoice.Metadata.TryGetValue("ticketId", out var ticketId))
-                    {
-                        var settings = await _LSPService.GetLSPForStore(storeId);
-                       
-                        result.Settings = settings;
-                    }
+                    return Redirect(invoice.CheckoutLink);
                 }
+
+                var info = await btcpayClient.GetLightningNodeInfo(storeId, "BTC");
+                
+                result.LNURL = LNURL.LNURL.EncodeUri(new Uri(Request.GetAbsoluteUri(Url.Action(
+                    "LNURLChannelRequest",
+                    "LSP", new {storeId, invoiceId, nodeUri = info.NodeURIs.OrderBy(nodeInfo => nodeInfo.IsTor).First().NodeId.ToString()}))), "channelRequest", true).ToString();
 
                 return View(result);
             }
@@ -141,6 +143,7 @@ namespace BTCPayServer.Plugins.LSP
 
         public class LSPReceiptPage
         {
+            public string LNURL;
             public string InvoiceId { get; set; }
             public InvoiceStatus Status { get; set; }
             public LSPSettings Settings { get; set; }
@@ -207,7 +210,6 @@ namespace BTCPayServer.Plugins.LSP
         [HttpGet("lnurlc-callback")]
         public async Task<IActionResult> LNURLChannelRequestCallback(string storeId, string k1, string remoteId)
         {
-
             if (!NodeInfo.TryParse(remoteId, out var remoteNode))
             {
                 return BadRequest();
