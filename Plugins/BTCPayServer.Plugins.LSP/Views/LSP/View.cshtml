@@ -2,9 +2,12 @@
 @using BTCPayServer.Plugins.LSP
 @model BTCPayServer.Plugins.LSP.LSPViewModel
 @inject ContentSecurityPolicies contentSecurityPolicies
+@inject IScopeProvider ScopeProvider
 @using BTCPayServer.Security
 @using NBitcoin
+@using BTCPayServer.Abstractions.Contracts
 @{
+    var storeId = ScopeProvider.GetCurrentStoreId();
     var nonce = RandomUtils.GetUInt256().ToString().Substring(0, 32);
     contentSecurityPolicies.Add("script-src", $"'nonce-{nonce}'");
     contentSecurityPolicies.AllowUnsafeHashes();
@@ -49,7 +52,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 <div class="overflow-hidden col-12">@Safe.Raw(Model.Settings.Description)</div>
             </div>
         }
-        <form method="post" asp-controller="LSP" asp-action="Purchase" asp-antiforgery="false" asp-route-storeId="@Context.GetRouteValue("storeId")">
+        <form method="post" asp-controller="LSP" asp-action="Purchase" asp-antiforgery="false" asp-route-storeId="@storeId">
             <div class="row g-2 mb-4 justify-content-center" id="form-email-container">
 
                 <div class="col-sm-12  col-md-8">
