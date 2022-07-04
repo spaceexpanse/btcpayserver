@@ -11,5 +11,5 @@
 }
 @if (BTCPayNetworkProvider.GetAll().OfType<ElementsBTCPayNetwork>().Any())
 {
-    <a class="nav-link @(isActive ? "active" : string.Empty)" asp-route-storeId="@this.Context.GetRouteValue("storeId")" asp-action="GenerateLiquidScript" asp-controller="StoreLiquid">Liquid</a>
+    <a class="nav-link @(isActive ? "active" : string.Empty)" asp-route-storeId="@storeId" asp-action="GenerateLiquidScript" asp-controller="StoreLiquid">Liquid</a>
 }
