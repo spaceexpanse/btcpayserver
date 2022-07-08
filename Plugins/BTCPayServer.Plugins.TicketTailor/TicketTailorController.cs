@@ -96,6 +96,10 @@ namespace BTCPayServer.Plugins.TicketTailor
                                 RedirectAutomatically = ticketType.Price > 0,
                                 RedirectURL = redirectUrl,
                             },
+                            Receipt = new InvoiceDataBase.ReceiptOptions()
+                            {
+                                Enabled = false
+                            },
                             Metadata = JObject.FromObject(new
                             {
                                 buyerName = $"{firstName} {lastName}", buyerEmail = email, ticketTypeId,orderId="tickettailor"
