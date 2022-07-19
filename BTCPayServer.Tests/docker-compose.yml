@@ -113,7 +113,7 @@ services:
 
   bitcoind:
     restart: unless-stopped
-    image: btcpayserver/bitcoin:22.0
+    image: btcpayserver/bitcoinknots:21.2
     environment:
       BITCOIN_NETWORK: regtest
       BITCOIN_WALLETDIR: "/data/wallets"
@@ -129,6 +129,7 @@ services:
         zmqpubrawtx=tcp://0.0.0.0:28333
         deprecatedrpc=signrawtransaction
         fallbackfee=0.0002
+        txindex=1
     ports:
       - "43782:43782"
       - "39388:39388"

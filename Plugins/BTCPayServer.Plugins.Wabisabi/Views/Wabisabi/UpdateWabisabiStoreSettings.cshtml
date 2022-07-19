@@ -1,0 +1,172 @@
+﻿@using BTCPayServer.Plugins.Wabisabi
+@using BTCPayServer.Abstractions.Extensions
+@using BTCPayServer.Abstractions.Contracts
+@using WalletWasabi.WabiSabi.Client
+@model BTCPayServer.Plugins.Wabisabi.WabisabiStoreSettings
+@inject IEnumerable<IWabisabiCoordinatorManager> _coordinatorManagers
+@inject IScopeProvider _scopeProvider
+@{
+    var storeId = _scopeProvider.GetCurrentStoreId();
+    Layout = "../Shared/_NavLayout.cshtml";
+    ViewData["NavPartialName"] = "../UIStores/_Nav";
+    ViewData.SetActivePage("Plugins", "BTCPayServer.Views.Stores.StoreNavPages", "Wabisabi coinjoin support", storeId);
+
+}
+
+<h2 class="mb-4">Wabisabi coinjoin support</h2>
+
+
+<form method="post">
+    @* <div class="accordion" id="coinjoin-accordian"> *@
+
+    @for (var index = 0; index < Model.Settings.Count; index++)
+    {
+        var s = Model.Settings[index];
+
+        var coordinator = (WabisabiCoordinatorManager) _coordinatorManagers.Single(manager => manager.CoordinatorName == s.Coordinator);
+        <div class="card  mt-3">
+            <div class="cursor-pointer card-header " data-bs-toggle="collapse" data-bs-target="#collapse-@s.Coordinator">
+                <h3>@coordinator.CoordinatorDisplayName</h3>
+
+                <span class="text-muted">@coordinator.Coordinator</span>
+                <div>
+                    @if (coordinator.WasabiCoordinatorStatusFetcher.LastResponse is null)
+                    {
+                        <p>Coordinator Status: Not connected</p>
+                    }
+                    else
+                    {
+                        <p>Coordinator Status: Connected</p>
+                    }
+                </div>
+            </div>
+            <div id="collapse-@s.Coordinator" class=" collapse show bg-light card-body">
+                @* <div class="accordion-body "> *@
+
+                <input asp-for="Settings[index].Coordinator" type="hidden"/>
+                <div class="form-group form-check">
+                    <label asp-for="Settings[index].Enabled" class="form-check-label"></label>
+                    <input asp-for="Settings[index].Enabled" type="checkbox" class="form-check-input"/>
+                </div>
+                <div class="form-group form-check">
+                    <label asp-for="Settings[index].ConsolidationMode" class="form-check-label"></label>
+                    <input asp-for="Settings[index].ConsolidationMode" type="checkbox" class="form-check-input"/>
+                    <p>Make coinjoins aggressively consolidate your utxos.</p>
+                </div>
+                <div class="form-group form-check">
+                    <label asp-for="Settings[index].RedCoinIsolation" class="form-check-label"></label>
+                    <input asp-for="Settings[index].RedCoinIsolation" type="checkbox" class="form-check-input"/>
+                    <p>Only allow a single non-private coin into a coinjoin.</p>
+                </div>
+                <div class="form-group ">
+                    <label asp-for="Settings[index].AnonScoreTarget" class="form-label"></label>
+                    <input asp-for="Settings[index].AnonScoreTarget" type="text" class="form-input"/>
+                    <p>Leave blank for simplified mechanism, else it will use the BlocchainAnalyuzer to determine coin anonset for round coin selection</p>
+                </div>
+                <div class="list-group  form-group">
+                    <div class="list-group-item font-weight-bold">Only mix coins with these labels</div>
+                    @if (s.InputLabelsAllowed?.Any() is not true)
+                    {
+                        <div class="list-group-item">No label filter applied</div>
+                    }
+                    else
+                    {
+                        @for (var xIndex = 0; xIndex < s.InputLabelsAllowed.Count; xIndex++)
+                        {
+                            <div class="list-group-item">
+                                <div class="input-group input-group-sm">
+                                    <input asp-for="Settings[index].InputLabelsAllowed[xIndex]" type="text" class="form-control"/>
+                                    <button name="command" value="include-label-remove:@s.Coordinator:@s.InputLabelsAllowed[xIndex]" type="submit" class="btn btn-secondary btn-sm">Remove</button>
+                                </div>
+                            </div>
+                        }
+                    }
+                    <div class="list-group-item">
+                        <button name="command" value="include-label-add:@s.Coordinator" type="submit" class="btn btn-secondary btn-sm">Add</button>
+                    </div>
+                </div>
+                <div class="list-group  form-group">
+                    <div class="list-group-item font-weight-bold">Only mix coins without these labels</div>
+                    @if (s.InputLabelsExcluded?.Any() is not true)
+                    {
+                        <div class="list-group-item">No label filter applied</div>
+                    }
+                    else
+                    {
+                        @for (var xIndex = 0; xIndex < s.InputLabelsExcluded.Count; xIndex++)
+                        {
+                            <div class="list-group-item">
+
+                                <div class="input-group input-group-sm">
+                                    <input asp-for="Settings[index].InputLabelsExcluded[xIndex]" type="text" class="form-control"/>
+                                    <button name="command" value="exclude-label-remove:@s.Coordinator:@s.InputLabelsExcluded[xIndex]" type="submit" class="btn btn-secondary btn-sm">Remove</button>
+                                </div>
+                            </div>
+                        }
+                    }
+                    <div class="list-group-item">
+                        <button name="command" value="exclude-label-add:@s.Coordinator" type="submit" class="btn btn-secondary btn-sm">Add</button>
+                    </div>
+                </div>
+                <div class="list-group  form-group">
+                    <div class="list-group-item h6 mb-0">Add labels to coins from coinjoins </div>
+                    @if (s.LabelsToAddToCoinjoin?.Any() is not true)
+                    {
+                        <div class="list-group-item">No labels applied to coinjoins</div>
+                    }
+                    else
+                    {
+                        @for (var xIndex = 0; xIndex < s.LabelsToAddToCoinjoin.Count; xIndex++)
+                        {
+                            <div class="list-group-item">
+                                <div class="input-group input-group-sm">
+                                    <input asp-for="Settings[index].LabelsToAddToCoinjoin[xIndex]" type="text" class="form-control"/>
+                                    <button name="command" value="coinjoin-label-remove:@s.Coordinator:@s.LabelsToAddToCoinjoin[xIndex]" type="submit" class="btn btn-secondary btn-sm">Remove</button>
+                                </div>
+
+                            </div>
+                        }
+                    }
+                    <div class="list-group-item">
+                        <button name="command" value="coinjoin-label-add:@s.Coordinator" type="submit" class="btn btn-secondary btn-sm">Add</button>
+                    </div>
+                </div>
+                <div>
+                    @{
+                        var w = (await coordinator.WalletProvider.GetWalletsAsync())?.SingleOrDefault(wallet => wallet is BTCPayWallet btcPayWallet && btcPayWallet.StoreId == storeId && !btcPayWallet.IsUnderPlebStop);
+                        
+
+                        if (w is not  null)
+                        {
+                            <button class="btn btn-link" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-@s.Coordinator-coins">Show coin candidates</button>
+                            var coinz = await w.GetCoinjoinCoinCandidatesAsync(0);
+                            <ul id="collapse-@s.Coordinator-coins" class=" collapse bg-light list-group">
+                                @foreach (var coin in coinz)
+                                {
+                                    <li class="list-group-item">
+                                        @coin.ToString()
+                                        
+                                            label: @coin.HdPubKey.Label.ToString()                                               
+                                        
+
+                                            anon: @coin.HdPubKey.AnonymitySet                                           
+
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    }
+                </div>
+
+            </div>
+        </div>
+        // </div>
+    }
+
+    <button name="command" type="submit" value="save" class="btn btn-primary mt-2">Save</button>
+
+</form>
+
+@section PageFootContent {
+    <partial name="_ValidationScriptsPartial"/>
+}
