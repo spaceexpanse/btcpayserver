@@ -10,10 +10,15 @@ Vue.component("SideShift", {
                 settleMethodId = "liquid";
             } else if (this.toCurrency.toLowerCase() === "usdt") {
                 settleMethodId = "usdtla";
-            } else if (this.toCurrency.endsWith('LightningLike')) {
+            } else if (this.toCurrency.endsWith('LightningLike') || this.toCurrency.endsWith('LNURLPay')) {
                 settleMethodId = "ln";
             } else {
-                settleMethodId = this.toCurrency.toLowerCase();
+                settleMethodId = this.toCurrency
+                    .replace('_BTCLike', '')
+                    .replace('_MoneroLike', '')
+                    .replace('_ZcashLike', '')
+                    .toUpperCase();
+
             }
             window.__SIDESHIFT__ = {
                 parentAffiliateId: "qg0OrfHJV",

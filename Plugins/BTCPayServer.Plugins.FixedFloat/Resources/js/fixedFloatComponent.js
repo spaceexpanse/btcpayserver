@@ -9,10 +9,14 @@ Vue.component("FixedFloat", {
     , computed: {
         url: function () {
             let settleMethodId = "";
-            if (this.toCurrency.endsWith('LightningLike')) {
+            if (this.toCurrency.endsWith('LightningLike') || this.toCurrency.endsWith('LNURLPay')) {
                 settleMethodId = "BTCLN";
             } else {
-                settleMethodId = this.toCurrency.toUpperCase();
+                settleMethodId = this.toCurrency
+                    .replace('_BTCLike', '')
+                    .replace('_MoneroLike', '')
+                    .replace('_ZcashLike', '')
+                    .toUpperCase();
             }
             const topup = this.$parent.srvModel.isUnsetTopUp;
             return "https://widget.fixedfloat.com/?" +
