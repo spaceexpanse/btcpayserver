@@ -115,100 +115,121 @@ public class TicketTailorService : IHostedService
     {
         while (await _events.Reader.WaitToReadAsync(cancellationToken))
         {
-            if (_events.Reader.TryRead(out var evt))
+            if (!_events.Reader.TryRead(out var evt)) continue;
+
+            async Task HandleIssueTicketError(JToken posData, string e, InvoiceData invoiceData,
+                BTCPayServerClient btcPayClient)
             {
-                InvoiceData invoice = null;
+                posData["Error"] =
+                    $"Ticket could not be created. You should refund customer.{Environment.NewLine}{e}";
+                invoiceData.Metadata["posData"] = posData;
+                await btcPayClient.UpdateInvoice(evt.StoreId, invoiceData.Id,
+                    new UpdateInvoiceRequest() {Metadata = invoiceData.Metadata}, cancellationToken);
                 try
                 {
-                    var settings = await GetTicketTailorForStore(evt.StoreId);
-                    if (settings is null || settings.ApiKey is null)
+                    await btcPayClient.MarkInvoiceStatus(evt.StoreId, invoiceData.Id,
+                        new MarkInvoiceStatusRequest() {Status = InvoiceStatus.Invalid}, cancellationToken);
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogError(exception, $"Failed to update invoice {invoiceData.Id} status from {invoiceData.Status} to Invalid after failing to issue ticket from ticket tailor");
+                }
+            }
+
+            InvoiceData invoice = null;
+            try
+            {
+                var settings = await GetTicketTailorForStore(evt.StoreId);
+                if (settings is null || settings.ApiKey is null)
+                {
+                    evt.Task.SetResult(null);
+                    continue;
+                }
+
+                var btcPayClient = await CreateClient(evt.StoreId, evt.Host);
+                invoice = await btcPayClient.GetInvoice(evt.StoreId, evt.InvoiceId, cancellationToken);
+                if (invoice.Status != InvoiceStatus.Settled)
+                {
+                    evt.Task.SetResult(null);
+                    continue;
+                }
+
+                if (invoice.Metadata.ContainsKey("ticketId"))
+                {
+                    evt.Task.SetResult(null);
+                    continue;
+                }
+
+                var ticketTypeId = invoice.Metadata["ticketTypeId"].ToString();
+                var email = invoice.Metadata["buyerEmail"].ToString();
+                var name = invoice.Metadata["buyerName"]?.ToString();
+                invoice.Metadata.TryGetValue("posData", out var posData);
+                posData ??= new JObject();
+                var client = new TicketTailorClient(_httpClientFactory, settings.ApiKey);
+                try
+                {
+                    var ticketResult = await client.CreateTicket(new TicketTailorClient.IssueTicketRequest()
                     {
-                        evt.Task.SetResult(null);
+                        Reference = invoice.Id,
+                        Email = email,
+                        EventId = settings.EventId,
+                        TicketTypeId = ticketTypeId,
+                        FullName = name,
+                    });
+
+                    if (ticketResult.Item2 is not null)
+                    {
+                        await HandleIssueTicketError(posData, ticketResult.Item2, invoice, btcPayClient);
+                            
                         continue;
                     }
+                        
+                    var ticket = ticketResult.Item1;
+                    invoice.Metadata["ticketId"] = ticket.Id;
+                    invoice.Metadata["orderId"] = $"tickettailor_{ticket.Id}";
 
-                    var btcPayClient = await CreateClient(evt.StoreId, evt.Host);
-                    invoice = await btcPayClient.GetInvoice(evt.StoreId, evt.InvoiceId, cancellationToken);
-                    if (invoice.Status != InvoiceStatus.Settled)
-                    {
-                        evt.Task.SetResult(null);
-                        continue;
-                    }
+                    posData["Ticket Code"] = ticket.Barcode;
+                    posData["Ticket Id"] = ticket.Id;
+                    invoice.Metadata["posData"] = posData;
+                    await btcPayClient.UpdateInvoice(evt.StoreId, invoice.Id,
+                        new UpdateInvoiceRequest() {Metadata = invoice.Metadata}, cancellationToken);
 
-                    if (invoice.Metadata.ContainsKey("ticketId"))
-                    {
-                        evt.Task.SetResult(null);
-                        continue;
-                    }
+                    var url =
+                        _linkGenerator.GetUriByAction("Receipt",
+                            "TicketTailor",
+                            new {evt.StoreId, invoiceId = invoice.Id},
+                            evt.Host.Scheme,
+                            new HostString(evt.Host.Host),
+                            evt.Host.AbsolutePath);
 
-                    var ticketTypeId = invoice.Metadata["ticketTypeId"].ToString();
-                    var email = invoice.Metadata["buyerEmail"].ToString();
-                    var name = invoice.Metadata["buyerName"]?.ToString();
-                    invoice.Metadata.TryGetValue("posData", out var posData);
-                    posData ??= new JObject();
-                    var client = new TicketTailorClient(_httpClientFactory, settings.ApiKey);
                     try
                     {
-                        var ticket = await client.CreateTicket(new TicketTailorClient.IssueTicketRequest()
-                        {
-                            Reference = invoice.Id,
-                            Email = email,
-                            EventId = settings.EventId,
-                            TicketTypeId = ticketTypeId,
-                            FullName = name,
-                        });
-                        invoice.Metadata["ticketId"] = ticket.Id;
-                        invoice.Metadata["orderId"] = $"tickettailor_{ticket.Id}";
-
-                        posData["Ticket Code"] = ticket.Barcode;
-                        posData["Ticket Id"] = ticket.Id;
-                        invoice.Metadata["posData"] = posData;
-                        await btcPayClient.UpdateInvoice(evt.StoreId, invoice.Id,
-                            new UpdateInvoiceRequest() {Metadata = invoice.Metadata}, cancellationToken);
-
-                        var url =
-                            _linkGenerator.GetUriByAction("Receipt",
-                                "TicketTailor",
-                                new {evt.StoreId, invoiceId = invoice.Id},
-                                evt.Host.Scheme,
-                                new HostString(evt.Host.Host),
-                                evt.Host.AbsolutePath);
-
-                        try
-                        {
-                            await btcPayClient.SendEmail(evt.StoreId,
-                                new SendEmailRequest()
-                                {
-                                    Subject = "Your ticket is available now.",
-                                    Email = email,
-                                    Body =
-                                        $"Your payment has been settled and the event ticket has been issued successfully. Please go to <a href='{url}'>{url}</a>"
-                                }, cancellationToken);
-                        }
-                        catch (Exception e)
-                        {
-                            // ignored
-                        }
+                        await btcPayClient.SendEmail(evt.StoreId,
+                            new SendEmailRequest()
+                            {
+                                Subject = "Your ticket is available now.",
+                                Email = email,
+                                Body =
+                                    $"Your payment has been settled and the event ticket has been issued successfully. Please go to <a href='{url}'>{url}</a>"
+                            }, cancellationToken);
                     }
                     catch (Exception e)
                     {
-                        posData["Error"] =
-                            $"Ticket could not be created. You should refund customer.{Environment.NewLine}{e.Message}";
-                        invoice.Metadata["posData"] = posData;
-                        await btcPayClient.UpdateInvoice(evt.StoreId, invoice.Id,
-                            new UpdateInvoiceRequest() {Metadata = invoice.Metadata}, cancellationToken);
-                        await btcPayClient.MarkInvoiceStatus(evt.StoreId, invoice.Id,
-                            new MarkInvoiceStatusRequest() {Status = InvoiceStatus.Invalid}, cancellationToken);
+                        // ignored
                     }
                 }
-                catch (Exception ex)
+                catch (Exception e)
                 {
-                    _logger.LogError(ex, "Failed to issue ticket");
+                    await HandleIssueTicketError(posData, e.Message, invoice, btcPayClient);
                 }
-                finally
-                {
-                    evt.Task.SetResult(invoice);
-                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to issue ticket");
+            }
+            finally
+            {
+                evt.Task.SetResult(invoice);
             }
         }
     }

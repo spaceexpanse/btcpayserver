@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using NBitcoin.DataEncoders;
 using NBitcoin.Logging;
 
@@ -17,8 +18,7 @@ public class TicketTailorClient : IDisposable
 {
     private readonly HttpClient _httpClient;
 
-    public TicketTailorClient(IHttpClientFactory httpClientFactory,
-        string apiKey)
+    public TicketTailorClient(IHttpClientFactory httpClientFactory, string apiKey)
     {
         _httpClient = httpClientFactory.CreateClient();
         _httpClient.BaseAddress = new Uri("https://api.tickettailor.com");
@@ -37,21 +37,19 @@ public class TicketTailorClient : IDisposable
         return await _httpClient.GetFromJsonAsync<Event>($"/v1/events/{id}");
     }
 
-    public async Task<IssuedTicket> CreateTicket(IssueTicketRequest request)
+    public async Task<(IssuedTicket, string)> CreateTicket(IssueTicketRequest request)
     {
         var data = JsonSerializer.SerializeToElement(request).EnumerateObject().Select(property =>
             new KeyValuePair<string, string>(property.Name, property.Value.GetString())).Where(pair =>pair.Value != null);
-        // var content = new MultipartFormDataContent();
-        // content.Add();
+
 
         var response = await _httpClient.PostAsync($"/v1/issued_tickets", new FormUrlEncodedContent(data.ToArray()));
         if (!response.IsSuccessStatusCode)
         {
             var error = await response.Content.ReadAsStringAsync();
-            Console.WriteLine(error);
+            return (null, error);
         }
-        response.EnsureSuccessStatusCode();
-        return (await response.Content.ReadFromJsonAsync<IssuedTicket>());
+        return (await response.Content.ReadFromJsonAsync<IssuedTicket>(), null);
     } 
 
 
