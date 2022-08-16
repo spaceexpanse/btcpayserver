@@ -17,7 +17,7 @@ Vue.component("SideShift", {
                     .replace('_BTCLike', '')
                     .replace('_MoneroLike', '')
                     .replace('_ZcashLike', '')
-                    .toUpperCase();
+                    .toLowerCase();
 
             }
             window.__SIDESHIFT__ = {
