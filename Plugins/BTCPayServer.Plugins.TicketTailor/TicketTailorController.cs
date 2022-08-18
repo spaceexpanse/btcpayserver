@@ -341,22 +341,25 @@ namespace BTCPayServer.Plugins.TicketTailor
             };
             
             var bindAddress = _configuration.GetValue("bind", IPAddress.Loopback);
-            if (bindAddress == IPAddress.Any)
+            if (Equals(bindAddress, IPAddress.Any))
             {
                 bindAddress = IPAddress.Loopback;
             } 
-            if (bindAddress == IPAddress.IPv6Any)
+            if (Equals(bindAddress, IPAddress.IPv6Any))
             {
                 bindAddress = IPAddress.IPv6Loopback;
             }
             int bindPort = _configuration.GetValue<int>("port", 443);
             
             string rootPath = _configuration.GetValue<string>("rootpath", "/");
-            var attempt1 = _linkGenerator.GetUriByAction("Callback",
-                "TicketTailor", new {storeId,test= true}, "https", new HostString(bindAddress?.ToString(), bindPort),
-                new PathString(rootPath));
-            
-            
+            string attempt1 = null;
+            if (bindAddress is not null)
+            {
+                attempt1 = _linkGenerator.GetUriByAction("Callback",
+                    "TicketTailor", new {storeId,test= true}, "https", new HostString(bindAddress?.ToString(), bindPort),
+                    new PathString(rootPath));
+            }
+         
             var attempt2 = Request.GetAbsoluteUri(Url.Action("Callback",
                 "TicketTailor", new {storeId, test= true}));
 
@@ -392,16 +395,21 @@ namespace BTCPayServer.Plugins.TicketTailor
             
 
             HttpResponseMessage result = null;
-            try
+            if (attempt1 is not null)
             {
-               
-                result = await CreateClient(attempt1).SendAsync(Create(attempt1), CancellationToken.None);
+
+                try
+                {
+
+                    result = await CreateClient(attempt1).SendAsync(Create(attempt1), CancellationToken.None);
+                }
+                catch (Exception e)
+                {
+
+                }
             }
-            catch (Exception e)
-            {
-                
-            }
-           string webhookUrl = null;
+
+            string webhookUrl = null;
            if (result?.IsSuccessStatusCode is true)
            {
                webhookUrl = _linkGenerator.GetUriByAction("Callback",
