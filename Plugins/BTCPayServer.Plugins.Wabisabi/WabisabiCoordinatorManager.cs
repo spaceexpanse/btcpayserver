@@ -3,6 +3,7 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using BTCPayServer.Payments.PayJoin;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -20,6 +21,7 @@ namespace BTCPayServer.Plugins.Wabisabi;
 
 public class WabisabiCoordinatorManager : IWabisabiCoordinatorManager
 {
+    private readonly IUTXOLocker _utxoLocker;
     private readonly ILogger<WabisabiCoordinatorManager> _logger;
     public string CoordinatorDisplayName { get; }
     public string CoordinatorName { get; set; }
@@ -30,8 +32,9 @@ public class WabisabiCoordinatorManager : IWabisabiCoordinatorManager
     public WasabiCoordinatorStatusFetcher WasabiCoordinatorStatusFetcher { get; set; }
     public CoinJoinManager CoinJoinManager { get; set; }
 
-    public WabisabiCoordinatorManager(string coordinatorDisplayName,string coordinatorName, Uri coordinator, ILoggerFactory loggerFactory, IServiceProvider serviceProvider)
+    public WabisabiCoordinatorManager(string coordinatorDisplayName,string coordinatorName, Uri coordinator, ILoggerFactory loggerFactory, IServiceProvider serviceProvider, IUTXOLocker utxoLocker)
     {
+        _utxoLocker = utxoLocker;
         var config = serviceProvider.GetService<IConfiguration>();
         var socksEndpoint = config.GetValue<string>("socksendpoint");
         EndPointParser.TryParse(socksEndpoint,9050, out var torEndpoint);
@@ -43,6 +46,7 @@ public class WabisabiCoordinatorManager : IWabisabiCoordinatorManager
         CoordinatorName = coordinatorName;
         Coordinator = coordinator;
         WalletProvider = ActivatorUtilities.CreateInstance<WalletProvider>(serviceProvider);
+        WalletProvider.UtxoLocker = _utxoLocker;
         WalletProvider.CoordinatorName = CoordinatorName;
         _logger = loggerFactory.CreateLogger<WabisabiCoordinatorManager>();
         WasabiHttpClientFactory = new HttpClientFactory(torEndpoint, () => Coordinator);
@@ -83,7 +87,11 @@ public class WabisabiCoordinatorManager : IWabisabiCoordinatorManager
 
                                 });
                                 break;
-                            
+                            default:
+                                _logger.LogInformation("unlocking coins because round failed");
+                                _utxoLocker.TryUnlock(
+                                    roundEnded.LastRoundState.CoinjoinState.Inputs.Select(coin => coin.Outpoint).ToArray());
+                                break;
                         }
                         break;
                 }

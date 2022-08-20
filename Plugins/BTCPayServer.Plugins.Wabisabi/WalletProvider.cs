@@ -22,16 +22,15 @@ public class WalletProvider: IWalletProvider
     private readonly IBTCPayServerClientFactory _btcPayServerClientFactory;
     private readonly IExplorerClientProvider _explorerClientProvider;
     private readonly IMemoryCache _memoryCache;
-    private readonly IUTXOLocker _utxoLocker;
+    public IUTXOLocker UtxoLocker { get; set; }
     private readonly ILoggerFactory _loggerFactory;
 
-    public WalletProvider(IStoreRepository storeRepository, IBTCPayServerClientFactory btcPayServerClientFactory, IExplorerClientProvider explorerClientProvider, IMemoryCache memoryCache, IUTXOLocker utxoLocker, ILoggerFactory loggerFactory)
+    public WalletProvider(IStoreRepository storeRepository, IBTCPayServerClientFactory btcPayServerClientFactory, IExplorerClientProvider explorerClientProvider, IMemoryCache memoryCache, ILoggerFactory loggerFactory)
     {
         _storeRepository = storeRepository;
         _btcPayServerClientFactory = btcPayServerClientFactory;
         _explorerClientProvider = explorerClientProvider;
         _memoryCache = memoryCache;
-        _utxoLocker = utxoLocker;
         _loggerFactory = loggerFactory;
     }
 
@@ -79,7 +78,7 @@ public class WalletProvider: IWalletProvider
                         var keychain = new BTCPayKeyChain(explorerClient, derivatonScheme, masterKey, accountKey);
 
                         var destinationProvider = new NBXInternalDestinationProvider(explorerClient, derivatonScheme);
-                        return new BTCPayWallet(derivatonScheme, explorerClient, keychain, destinationProvider, _btcPayServerClientFactory, pair.Key, configuredStores[pair.Key], CoordinatorName, _utxoLocker, _loggerFactory );
+                        return new BTCPayWallet(derivatonScheme, explorerClient, keychain, destinationProvider, _btcPayServerClientFactory, pair.Key, configuredStores[pair.Key], CoordinatorName, UtxoLocker, _loggerFactory );
                     }
                     catch (Exception e)
                     {

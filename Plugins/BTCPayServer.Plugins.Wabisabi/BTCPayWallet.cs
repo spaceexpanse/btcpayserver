@@ -34,7 +34,7 @@ public class BTCPayWallet : IWallet
     private readonly IUTXOLocker _utxoLocker;
     private readonly WabisabiStoreCoordinatorSettings _settings;
     private readonly ILogger _logger;
-    private static BlockchainAnalyzer BlockchainAnalyzer = new BlockchainAnalyzer();
+    private static BlockchainAnalyzer BlockchainAnalyzer = new();
 
     public BTCPayWallet(DerivationStrategyBase derivationScheme, ExplorerClient explorerClient, BTCPayKeyChain keyChain,
         IDestinationProvider destinationProvider, IBTCPayServerClientFactory btcPayServerClientFactory, string storeId,
@@ -121,7 +121,7 @@ public class BTCPayWallet : IWallet
         }
         catch (Exception e)
         {
-            Logger.LogError(e);
+            _logger.LogError(e, "Could not compute coin candidate");
             return Array.Empty<SmartCoin>();
         }
     }
@@ -132,14 +132,21 @@ public class BTCPayWallet : IWallet
         var derivation = _derivationScheme.GetChild(coinKeyPath).GetExtPubKeys().First().PubKey;
         var hdPubKey = new HdPubKey(derivation, kp.Derive(coinKeyPath).KeyPath, SmartLabel.Empty,
             KeyState.Clean);
-        if (string.IsNullOrEmpty(_settings.AnonScoreTarget))
-        {
-            var anonset = labels.Contains("coinjoin") &&
-                          BlockchainAnalyzer.StdDenoms.Contains(amount.Satoshi)
-                ? 2
-                : 1;
-            hdPubKey.SetAnonymitySet(anonset);
-        }
+        // if (string.IsNullOrEmpty(_settings.AnonScoreTarget))
+        // {
+        //     var anonset = labels.Contains("coinjoin") &&
+        //                   BlockchainAnalyzer.StdDenoms.Contains(amount.Satoshi)
+        //         ? 2
+        //         : 1;
+        //     hdPubKey.SetAnonymitySet(anonset);
+        // }
+        // else
+        // {
+        //     if (hdPubKey.AnonymitySet == HdPubKey.DefaultHighAnonymitySet)
+        //     {
+        //         hdPubKey.SetAnonymitySet(1);
+        //     }
+        // }
         
        
         hdPubKey.SetLabel(new SmartLabel(labels));
@@ -165,7 +172,25 @@ public class BTCPayWallet : IWallet
             var derivation = _derivationScheme.GetChild(input.KeyPath).GetExtPubKeys().First().PubKey;
             var hdPubKey = new HdPubKey(derivation, accountKeyPath.Derive(input.KeyPath).KeyPath, SmartLabel.Empty,
                 KeyState.Used);
-            result.TryAddWalletInput(new SmartCoin(result, (uint)input.Index, hdPubKey));
+            if (hdPubKey.AnonymitySet == HdPubKey.DefaultHighAnonymitySet)
+            {
+                hdPubKey.SetAnonymitySet(1);
+            }
+
+            TxIn txin = null;
+            try
+            {
+                txin = tx.Transaction.Inputs.Find(txIn =>
+                    txIn.PrevOut.N == input.Index && txIn.GetSigner().ScriptPubKey == input.ScriptPubKey);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, $"need input {input.Index} and & index count is{tx.Transaction.Inputs.Count()} \n {tx.TransactionId} {(Money)input.Value}, {input.ScriptPubKey.GetDestinationAddress(_explorerClient.Network.NBitcoinNetwork) }");
+            };
+            // _explorerClient.GetTransactionAsync(_derivationScheme, tx.Transaction.Inputs[input.Index].PrevOut.Hash)
+            var sc = new SmartCoin(txin, (Money)input.Value, input.ScriptPubKey , hdPubKey);
+            sc.SpenderTransaction = result;
+            result.TryAddWalletInput(sc);
         }
 
         foreach (var output in tx.Outputs)
@@ -225,15 +250,14 @@ public class BTCPayWallet : IWallet
     {
         if (sender is SmartCoin smartCoin && e.PropertyName == nameof(SmartCoin.CoinJoinInProgress))
         {
-            _ = smartCoin.CoinJoinInProgress
+            
+            _logger.LogInformation($"{smartCoin.OutPoint}.CoinJoinInProgress = {smartCoin.CoinJoinInProgress}");
+            _ = (smartCoin.CoinJoinInProgress
                 ? _utxoLocker.TryLock(smartCoin.OutPoint)
-                : _utxoLocker.TryUnlock(smartCoin.OutPoint).ContinueWith(task =>
+                : _utxoLocker.TryUnlock(smartCoin.OutPoint)).ContinueWith(task =>
                 {
-                    if (smartCoin.CoinJoinInProgress)
-                    {
-                        _logger.LogInformation(
-                            $"{(task.Result ? "Success" : "Fail")}: {(smartCoin.CoinJoinInProgress ? "" : "un")}locking coin for coinjoin: {smartCoin.OutPoint} ");
-                    }
+                    _logger.LogInformation(
+                        $"{(task.Result ? "Success" : "Fail")}: {(smartCoin.CoinJoinInProgress ? "" : "un")}locking coin for coinjoin: {smartCoin.OutPoint} ");
                 });
         }
     }
