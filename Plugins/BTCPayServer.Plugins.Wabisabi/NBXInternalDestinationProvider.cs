@@ -22,7 +22,7 @@ public class NBXInternalDestinationProvider : IDestinationProvider
         var res = new List<IDestination>();
         for (var i = 0; i < count; i++)
         {
-            var kpi = _explorerClient.GetUnused(_derivationStrategy, DerivationFeature.Deposit);
+            var kpi = _explorerClient.GetUnused(_derivationStrategy, DerivationFeature.Deposit, 0, true);
             res.Add(kpi.Address);
         }
 

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Threading.Tasks;
 using BTCPayServer.Abstractions.Contracts;
 using BTCPayServer.Abstractions.Models;
 using BTCPayServer.Abstractions.Services;
@@ -36,7 +35,7 @@ public class WabisabiPlugin : BaseBTCPayServerPlugin
     public override void Execute(IServiceCollection applicationBuilder)
     {
 
-
+        var utxoLocker = new LocalisedUTXOLocker();
         AddCoordinator(applicationBuilder, "zkSNACKS Coordinator", "zksnacks", provider =>
         {
             var chain = provider.GetService<IExplorerClientProvider>().GetExplorerClient("BTC").Network
@@ -52,7 +51,7 @@ public class WabisabiPlugin : BaseBTCPayServerPlugin
             }
 
             return new Uri("http://localhost:37127");
-        });
+        },utxoLocker);
         applicationBuilder.AddSingleton<WabisabiService>();
         applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("Wabisabi/StoreIntegrationWabisabiOption",
             "store-integrations-list"));
@@ -63,21 +62,21 @@ public class WabisabiPlugin : BaseBTCPayServerPlugin
         base.Execute(applicationBuilder);
     }
 
-    public override void Execute(IApplicationBuilder applicationBuilder, IServiceProvider applicationBuilderApplicationServices)
-    {
-        Task.Run(async () =>
-        {
-            var walletProvider =
-                (WalletProvider)applicationBuilderApplicationServices.GetRequiredService<IWalletProvider>();
-            await walletProvider.UnlockUTXOs();
-        });
-        base.Execute(applicationBuilder, applicationBuilderApplicationServices);
-    }
+    // public override void Execute(IApplicationBuilder applicationBuilder, IServiceProvider applicationBuilderApplicationServices)
+    // {
+    //     Task.Run(async () =>
+    //     {
+    //         var walletProvider =
+    //             (WalletProvider)applicationBuilderApplicationServices.GetRequiredService<IWalletProvider>();
+    //         await walletProvider.UnlockUTXOs();
+    //     });
+    //     base.Execute(applicationBuilder, applicationBuilderApplicationServices);
+    // }
 
-    private void AddCoordinator(IServiceCollection serviceCollection, string displayName, string name, Func<IServiceProvider, Uri> fetcher)
+    private void AddCoordinator(IServiceCollection serviceCollection, string displayName, string name, Func<IServiceProvider, Uri> fetcher, IUTXOLocker utxoLocker)
     {
         serviceCollection.AddSingleton<IWabisabiCoordinatorManager>(provider => new WabisabiCoordinatorManager(
-            displayName, name, fetcher.Invoke(provider), provider.GetService<ILoggerFactory>(), provider));
+            displayName, name, fetcher.Invoke(provider), provider.GetService<ILoggerFactory>(), provider, utxoLocker));
 
         serviceCollection.AddHostedService(s =>
             s.GetServices<IWabisabiCoordinatorManager>().Single(manager => manager.CoordinatorName == name));
