@@ -3,7 +3,8 @@ Vue.component("LNURLWithdrawContactless", {
         return {
             supported: 'NDEFReader' in window,
             scanning: false,
-            submitting: false
+            submitting: false,
+            readerAbortController: null,
         }
     },
     methods: {
@@ -24,10 +25,12 @@ Vue.component("LNURLWithdrawContactless", {
                     self.scanning = false;
                 }
                 ndef = new NDEFReader()
-                await ndef.scan()
+                self.readerAbortController = new AbortController()
+                await ndef.scan({signal: self.readerAbortController.signal})
 
                 ndef.addEventListener('readingerror', () => {
                     self.scanning = false;
+                    self.readerAbortController.abort()
                 })
 
                 ndef.addEventListener('reading', ({message, serialNumber}) => {
@@ -58,11 +61,24 @@ Vue.component("LNURLWithdrawContactless", {
             //User feedback, reset on failure
             xhr.onload = function () {
                 if (xhr.readyState === xhr.DONE) {
-
                     console.log(xhr.response);
                     console.log(xhr.responseText);
                     self.scanning = false;
                     self.submitting = false;
+
+                    if(self.readerAbortController) {
+                        self.readerAbortController.abort()
+                    }
+
+                    try {
+                        var data = JSON.parse(xhr.response)
+
+                        if(data && data.status == "ERROR") {
+                            alert(data.reason)
+                        }
+                    } catch (err) {
+                        alert("Error parsing response.")
+                    }
                 }
             }
         }
