@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace BTCPayServer.Plugins.Wabisabi;
 
@@ -18,5 +19,9 @@ public class WabisabiStoreCoordinatorSettings
     public List<string> LabelsToAddToCoinjoin { get; set; } = new();
     public bool ConsolidationMode { get; set; } = false;
     public bool RedCoinIsolation { get; set; } = false;
-    public string AnonScoreTarget { get; set; } = "";
+    public int? AnonScoreTarget { get; set; } = null;
+
+    public bool SelectiveCoinjoin => InputLabelsAllowed.Any() || InputLabelsExcluded.Any();
+    public bool IsPlebMode =>!ConsolidationMode && !RedCoinIsolation && AnonScoreTarget is null && !SelectiveCoinjoin;
+  
 }
