@@ -63,8 +63,7 @@ public class BTCPayWallet : IWallet
     public IKeyChain KeyChain { get; }
     public IDestinationProvider DestinationProvider { get; }
 
-    public int AnonScoreTarget =>
-        string.IsNullOrEmpty(_settings.AnonScoreTarget) ? 2 : int.Parse(_settings.AnonScoreTarget);
+    public int AnonScoreTarget => _settings.AnonScoreTarget ?? 2;
     public bool ConsolidationMode => _settings.ConsolidationMode;
     public TimeSpan FeeRateMedianTimeFrame { get; } = TimeSpan.FromHours(KeyManager.DefaultFeeRateMedianTimeFrameHours);
     public bool RedCoinIsolation => _settings.RedCoinIsolation;
@@ -200,7 +199,7 @@ public class BTCPayWallet : IWallet
             result.TryAddWalletOutput(coin);
         }
 
-        if (!string.IsNullOrEmpty(_settings.AnonScoreTarget))
+        if (_settings.AnonScoreTarget is not null)
         {
             BlockchainAnalyzer.Analyze(result);
         }

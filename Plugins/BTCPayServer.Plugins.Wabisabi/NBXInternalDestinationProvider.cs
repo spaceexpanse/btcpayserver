@@ -1,4 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
+using System.Threading.Tasks;
 using NBitcoin;
 using NBXplorer;
 using NBXplorer.DerivationStrategy;
@@ -17,15 +21,15 @@ public class NBXInternalDestinationProvider : IDestinationProvider
         _derivationStrategy = derivationStrategy;
     }
 
-    public IEnumerable<IDestination> GetNextDestinations(int count)
-    {
-        var res = new List<IDestination>();
-        for (var i = 0; i < count; i++)
-        {
-            var kpi = _explorerClient.GetUnused(_derivationStrategy, DerivationFeature.Deposit, 0, true);
-            res.Add(kpi.Address);
-        }
 
-        return res;
+    public async Task<IEnumerable<(IDestination, Money, string)>> GetPayments(ImmutableArray<AliceClient> registeredAliceClients)
+    {
+        return Array.Empty<(IDestination, Money, string)>();
+    }
+
+    public async Task<IEnumerable<IDestination>> GetNextDestinations(int count)
+    {
+      return  await  Task.WhenAll(Enumerable.Repeat(0, count).Select(_ =>
+            _explorerClient.GetUnusedAsync(_derivationStrategy, DerivationFeature.Deposit, 0, true))).ContinueWith(task => task.Result.Select(information => information.Address));
     }
 }
