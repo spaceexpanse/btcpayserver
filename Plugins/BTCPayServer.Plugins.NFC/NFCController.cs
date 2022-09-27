@@ -29,15 +29,26 @@ namespace BTCPayServer.Plugins.NFC
         [AllowAnonymous]
         public async Task<IActionResult> SubmitLNURLWithdrawForInvoice([FromBody] SubmitRequest request)
         {
-            var uri = LNURL.LNURL.Parse(request.Lnurl, out var tag);
-            if (uri is null)
+            Uri uri;
+            string tag;
+            try
             {
-                return BadRequest();
+                uri = LNURL.LNURL.Parse(request.Lnurl, out tag);
+                if (uri is null)
+                {
+                    return BadRequest("lnurl was malformed");
+                }
             }
+            catch (Exception e)
+            {
+                
+                return BadRequest(e.Message);
+            }
+           
 
             if (!string.IsNullOrEmpty(tag) && !tag.Equals("withdrawRequest"))
             {
-                return BadRequest();
+                return BadRequest("lnurl was not lnurl-withdraw");
             }
 
             var httpClient = _httpClientFactory.CreateClient(uri.IsOnion()
@@ -47,7 +58,7 @@ namespace BTCPayServer.Plugins.NFC
                 LNURL.LNURL.FetchInformation(uri, "withdrawRequest", httpClient)) as LNURLWithdrawRequest;
             if (info is null)
             {
-                return BadRequest();
+                return BadRequest("Could not fetch info from lnurl-withdraw ");
             }
 
             httpClient = _httpClientFactory.CreateClient(info.Callback.IsOnion()
@@ -63,7 +74,7 @@ namespace BTCPayServer.Plugins.NFC
 
                 if (destinfo is null)
                 {
-                    return BadRequest();
+                    return BadRequest("Could not fetch bolt11 invoice to pay to.");
                 }
 
                 httpClient = _httpClientFactory.CreateClient(destinfo.Callback.IsOnion()
@@ -79,10 +90,10 @@ namespace BTCPayServer.Plugins.NFC
             var result = await info.SendRequest(request.Destination, httpClient);
             if (result.Status.Equals("ok", StringComparison.InvariantCultureIgnoreCase))
             {
-                return Ok();
+                return Ok(result.Reason);
             }
 
-            return BadRequest(result);
+            return BadRequest(result.Reason);
         }
     }
 }

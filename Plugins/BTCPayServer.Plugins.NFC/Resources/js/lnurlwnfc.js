@@ -70,14 +70,8 @@ Vue.component("LNURLWithdrawContactless", {
                         self.readerAbortController.abort()
                     }
 
-                    try {
-                        var data = JSON.parse(xhr.response)
-
-                        if(data && data.status == "ERROR") {
-                            alert(data.reason)
-                        }
-                    } catch (err) {
-                        alert("Error parsing response.")
+                    if(xhr.response){
+                        alert(xhr.response)
                     }
                 }
             }
