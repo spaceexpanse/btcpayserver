@@ -62,23 +62,18 @@ public class WalletProvider: IWalletProvider
                             return null;
                         }
 
-                        var derivatonScheme =
+                        var derivationStrategy =
                             explorerClient.Network.DerivationStrategyFactory.Parse(pm.DerivationScheme);
 
-                        if (derivatonScheme is not DirectDerivationStrategy {Segwit: true})
-                        {
-                            return null;
-                        }
-
-                        var masterKey = await explorerClient.GetMetadataAsync<BitcoinExtKey>(derivatonScheme,
+                        var masterKey = await explorerClient.GetMetadataAsync<BitcoinExtKey>(derivationStrategy,
                             WellknownMetadataKeys.MasterHDKey);
-                        var accountKey = await explorerClient.GetMetadataAsync<BitcoinExtKey>(derivatonScheme,
+                        var accountKey = await explorerClient.GetMetadataAsync<BitcoinExtKey>(derivationStrategy,
                             WellknownMetadataKeys.AccountHDKey);
 
-                        var keychain = new BTCPayKeyChain(explorerClient, derivatonScheme, masterKey, accountKey);
+                        var keychain = new BTCPayKeyChain(explorerClient, derivationStrategy, masterKey, accountKey);
 
-                        var destinationProvider = new NBXInternalDestinationProvider(explorerClient, derivatonScheme);
-                        return new BTCPayWallet(derivatonScheme, explorerClient, keychain, destinationProvider, _btcPayServerClientFactory, pair.Key, configuredStores[pair.Key], CoordinatorName, UtxoLocker, _loggerFactory );
+                        var destinationProvider = new NBXInternalDestinationProvider(explorerClient, derivationStrategy);
+                        return new BTCPayWallet(derivationStrategy, explorerClient, keychain, destinationProvider, _btcPayServerClientFactory, pair.Key, configuredStores[pair.Key], CoordinatorName, UtxoLocker, _loggerFactory );
                     }
                     catch (Exception e)
                     {

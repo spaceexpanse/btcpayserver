@@ -14,6 +14,8 @@ public class WabisabiStoreCoordinatorSettings
 {
     public string Coordinator { get; set; }
     public bool Enabled { get; set; } = false;
+    public bool PlebMode { get; set; } = true;
+    
     public List<string> InputLabelsAllowed { get; set; } = new();
     public List<string> InputLabelsExcluded { get; set; } = new();
     public List<string> LabelsToAddToCoinjoin { get; set; } = new();
@@ -22,6 +24,6 @@ public class WabisabiStoreCoordinatorSettings
     public int? AnonScoreTarget { get; set; } = null;
 
     public bool SelectiveCoinjoin => InputLabelsAllowed.Any() || InputLabelsExcluded.Any();
-    public bool IsPlebMode =>!ConsolidationMode && !RedCoinIsolation && AnonScoreTarget is null && !SelectiveCoinjoin;
-  
+    public bool IsPlebMode => PlebMode;
+
 }

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using NBitcoin;
 using NBXplorer;
 using NBXplorer.DerivationStrategy;
+using WalletWasabi.WabiSabi.Backend.Rounds;
 using WalletWasabi.WabiSabi.Client;
 
 namespace BTCPayServer.Plugins.Wabisabi;
@@ -31,5 +32,10 @@ public class NBXInternalDestinationProvider : IDestinationProvider
     {
       return  await  Task.WhenAll(Enumerable.Repeat(0, count).Select(_ =>
             _explorerClient.GetUnusedAsync(_derivationStrategy, DerivationFeature.Deposit, 0, true))).ContinueWith(task => task.Result.Select(information => information.Address));
+    }
+
+    public Task<IEnumerable<PendingPayment>> GetPendingPayments(RoundParameters roundParameters, ImmutableArray<AliceClient> registeredAliceClients)
+    {
+        throw new NotImplementedException();
     }
 }
