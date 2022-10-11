@@ -63,10 +63,10 @@ public class BTCPayWallet : IWallet
     public IKeyChain KeyChain { get; }
     public IDestinationProvider DestinationProvider { get; }
 
-    public int AnonScoreTarget => _settings.AnonScoreTarget ?? 2;
-    public bool ConsolidationMode => _settings.ConsolidationMode;
+    public int AnonScoreTarget => _settings.IsPlebMode? 2:  _settings.AnonScoreTarget ?? 2;
+    public bool ConsolidationMode => !_settings.IsPlebMode && _settings.ConsolidationMode;
     public TimeSpan FeeRateMedianTimeFrame { get; } = TimeSpan.FromHours(KeyManager.DefaultFeeRateMedianTimeFrameHours);
-    public bool RedCoinIsolation => _settings.RedCoinIsolation;
+    public bool RedCoinIsolation => !_settings.IsPlebMode &&_settings.RedCoinIsolation;
 
     public async Task<bool> IsWalletPrivateAsync()
     {
@@ -84,23 +84,24 @@ public class BTCPayWallet : IWallet
 
             var client = await _btcPayServerClientFactory.Create(null, StoreId);
             var utxos = await client.GetOnChainWalletUTXOs(StoreId, "BTC");
-
-            if (_settings.InputLabelsAllowed?.Any() is true)
+            if (!_settings.IsPlebMode)
             {
-                utxos = utxos.Where(data =>
-                    !_settings.InputLabelsAllowed.Any(s => data.Labels.ContainsKey(s)));
-            }
+                if (_settings.InputLabelsAllowed?.Any() is true)
+                {
+                    utxos = utxos.Where(data =>
+                        !_settings.InputLabelsAllowed.Any(s => data.Labels.ContainsKey(s)));
+                }
 
-            if (_settings.InputLabelsExcluded?.Any() is true)
-            {
-                utxos = utxos.Where(data =>
-                    _settings.InputLabelsExcluded.All(s => !data.Labels.ContainsKey(s)));
+                if (_settings.InputLabelsExcluded?.Any() is true)
+                {
+                    utxos = utxos.Where(data =>
+                        _settings.InputLabelsExcluded.All(s => !data.Labels.ContainsKey(s)));
+                }
             }
 
             var locks = await _utxoLocker.FindLocks(utxos.Select(data => data.Outpoint).ToArray());
             utxos = utxos.Where(data => !locks.Contains(data.Outpoint));
 
-            // var utxos = await _explorerClient.GetUTXOsAsync(_derivationScheme);
             var kp = await _explorerClient.GetMetadataAsync<RootedKeyPath>(_derivationScheme,
                 WellknownMetadataKeys.AccountKeyPath);
             var result = (await Task.WhenAll(utxos.Where(data => data.Confirmations > 0).Select(async utxo =>
@@ -199,7 +200,7 @@ public class BTCPayWallet : IWallet
             result.TryAddWalletOutput(coin);
         }
 
-        if (_settings.AnonScoreTarget is not null)
+        if (!_settings.IsPlebMode && _settings.AnonScoreTarget is not null)
         {
             BlockchainAnalyzer.Analyze(result);
         }

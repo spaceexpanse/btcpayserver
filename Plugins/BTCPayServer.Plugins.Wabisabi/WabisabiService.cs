@@ -36,7 +36,7 @@ namespace BTCPayServer.Plugins.Wabisabi
                     res.Settings.Add(new WabisabiStoreCoordinatorSettings()
                     {
                         Coordinator = wabisabiCoordinatorManager.CoordinatorName,
-                        LabelsToAddToCoinjoin = new List<string>(){"coinjoin", "coinjoin-{Coordinator}", "coinjoin-{RoundId}"}
+                        LabelsToAddToCoinjoin = new List<string>(){"coinjoin", "coinjoin-{Coordinator}"}
                     });
                 }
             }
@@ -46,6 +46,7 @@ namespace BTCPayServer.Plugins.Wabisabi
 
         public async Task SetWabisabiForStore(string storeId, WabisabiStoreSettings wabisabiSettings)
         {
+            
             await _storeRepository.UpdateSetting(storeId, nameof(WabisabiStoreSettings), wabisabiSettings);
             _memoryCache.Remove("Wabisabi_WalletProvider");
         }
