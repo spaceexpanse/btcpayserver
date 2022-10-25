@@ -57,7 +57,7 @@ public class BTCPayWallet : IWallet
 
     public string StoreId { get; set; }
 
-    public string Identifier => _derivationScheme.ToString();
+    public string WalletName => _derivationScheme.ToString();
     public bool IsUnderPlebStop =>  !_settings.Enabled;
     public bool IsMixable => true;
     public IKeyChain KeyChain { get; }
@@ -73,7 +73,7 @@ public class BTCPayWallet : IWallet
         return false;
     }
 
-    public async Task<IEnumerable<SmartCoin>> GetCoinjoinCoinCandidatesAsync(int bestHeight)
+    public async Task<IEnumerable<SmartCoin>> GetCoinjoinCoinCandidatesAsync()
     {
         try
         {
@@ -132,21 +132,22 @@ public class BTCPayWallet : IWallet
         var derivation = _derivationScheme.GetChild(coinKeyPath).GetExtPubKeys().First().PubKey;
         var hdPubKey = new HdPubKey(derivation, kp.Derive(coinKeyPath).KeyPath, SmartLabel.Empty,
             KeyState.Clean);
-        // if (string.IsNullOrEmpty(_settings.AnonScoreTarget))
-        // {
-        //     var anonset = labels.Contains("coinjoin") &&
-        //                   BlockchainAnalyzer.StdDenoms.Contains(amount.Satoshi)
-        //         ? 2
-        //         : 1;
-        //     hdPubKey.SetAnonymitySet(anonset);
-        // }
-        // else
-        // {
-        //     if (hdPubKey.AnonymitySet == HdPubKey.DefaultHighAnonymitySet)
-        //     {
-        //         hdPubKey.SetAnonymitySet(1);
-        //     }
-        // }
+        if (_settings.IsPlebMode || _settings.AnonScoreTarget is null)
+        {
+            var anonset = labels.Contains("coinjoin") &&
+                          BlockchainAnalyzer.StdDenoms.Contains(amount.Satoshi)
+                ? 2
+                : 1;
+            hdPubKey.SetAnonymitySet(anonset);
+        }
+        else
+        {
+            //TODO: Load anonscore from script label
+            if (hdPubKey.AnonymitySet == HdPubKey.DefaultHighAnonymitySet)
+            {
+                hdPubKey.SetAnonymitySet(1);
+            }
+        }
         
        
         hdPubKey.SetLabel(new SmartLabel(labels));
