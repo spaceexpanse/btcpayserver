@@ -72,7 +72,7 @@ public class WalletProvider: IWalletProvider
 
                         var keychain = new BTCPayKeyChain(explorerClient, derivationStrategy, masterKey, accountKey);
 
-                        var destinationProvider = new NBXInternalDestinationProvider(explorerClient, derivationStrategy);
+                        var destinationProvider = new NBXInternalDestinationProvider(explorerClient, derivationStrategy, client, pair.Key);
                         return new BTCPayWallet(derivationStrategy, explorerClient, keychain, destinationProvider, _btcPayServerClientFactory, pair.Key, configuredStores[pair.Key], CoordinatorName, UtxoLocker, _loggerFactory );
                     }
                     catch (Exception e)

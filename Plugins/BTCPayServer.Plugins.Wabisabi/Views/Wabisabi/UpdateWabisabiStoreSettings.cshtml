@@ -175,7 +175,7 @@
                         if (w is not  null)
                         {
                             <button class="btn btn-link" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-@s.Coordinator-coins">Show coin candidates</button>
-                            var coinz = await w.GetCoinjoinCoinCandidatesAsync(0);
+                            var coinz = await w.GetCoinjoinCoinCandidatesAsync();
                             <ul id="collapse-@s.Coordinator-coins" class=" collapse bg-light list-group">
                                 @foreach (var coin in coinz)
                                 {

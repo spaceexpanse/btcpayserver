@@ -97,24 +97,24 @@ public class WabisabiCoordinatorManager : IWabisabiCoordinatorManager
                 }
                 _logger.LogInformation(e.GetType() +
                                        coinJoinStatusEventArgs.CoinJoinProgressEventArgs.GetType().ToString() + "   :" +
-                                       e.Wallet.Identifier);
+                                       e.Wallet.WalletName);
                 break;
             case CompletedEventArgs completedEventArgs:
                 _logger.LogInformation(e.GetType() + completedEventArgs.CompletionStatus.ToString() + "   :" +
-                                       e.Wallet.Identifier);
+                                       e.Wallet.WalletName);
                 break;
             case LoadedEventArgs loadedEventArgs:
                 _ = CoinJoinManager.StartAsync(loadedEventArgs.Wallet, false, false, CancellationToken.None);
-                _logger.LogInformation(e.GetType() + "   :" + e.Wallet.Identifier);
+                _logger.LogInformation(e.GetType() + "   :" + e.Wallet.WalletName);
                 break;
             case StartErrorEventArgs errorArgs:
-                _logger.LogInformation(e.GetType() + errorArgs.Error.ToString() + "   :" + e.Wallet.Identifier);
+                _logger.LogInformation(e.GetType() + errorArgs.Error.ToString() + "   :" + e.Wallet.WalletName);
                 break;
             case StoppedEventArgs stoppedEventArgs:
-                _logger.LogInformation(e.GetType() + " " + stoppedEventArgs.Reason + "   :" + e.Wallet.Identifier);
+                _logger.LogInformation(e.GetType() + " " + stoppedEventArgs.Reason + "   :" + e.Wallet.WalletName);
                 break;
             default:
-                _logger.LogInformation(e.GetType() + "   :" + e.Wallet.Identifier);
+                _logger.LogInformation(e.GetType() + "   :" + e.Wallet.WalletName);
                 break;
         }
     }
