@@ -1,7 +1,7 @@
 Vue.component("LNURLWithdrawContactless", {
     data: function () {
         return {
-            supported: 'NDEFReader' in window,
+            supported: ('NDEFReader' in window && window.self === window.top),
             scanning: false,
             submitting: false,
             readerAbortController: null,
