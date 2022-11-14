@@ -4,7 +4,6 @@
 @inject BTCPayServer.Security.ContentSecurityPolicies csp
 @inject SideShiftService SideShiftService
 @{
-
     var storeId = ((JObject)JObject.Parse(JsonConvert.SerializeObject(Model)))["StoreId"].Value<string>();
     var settings = await SideShiftService.GetSideShiftForStore(storeId);
     if (settings?.Enabled is true)
