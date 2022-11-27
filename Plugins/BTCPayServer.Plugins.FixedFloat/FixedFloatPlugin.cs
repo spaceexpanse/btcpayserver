@@ -21,8 +21,16 @@ namespace BTCPayServer.Plugins.FixedFloat
         public override void Execute(IServiceCollection applicationBuilder)
         {
             applicationBuilder.AddSingleton<FixedFloatService>();
+            applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("FixedFloat/FixedFloatNav",
+                "store-integrations-nav"));
             applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("FixedFloat/StoreIntegrationFixedFloatOption",
                 "store-integrations-list"));
+            // Checkout v2
+            applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("FixedFloat/CheckoutPaymentMethodExtension",
+                "checkout-payment-method"));
+            applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("FixedFloat/CheckoutPaymentExtension",
+                "checkout-payment"));
+            // Checkout Classic
             applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("FixedFloat/CheckoutContentExtension",
                 "checkout-bitcoin-post-content"));
             applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("FixedFloat/CheckoutContentExtension",
@@ -33,8 +41,6 @@ namespace BTCPayServer.Plugins.FixedFloat
                 "checkout-lightning-post-tabs"));
             applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("FixedFloat/CheckoutEnd",
                 "checkout-end"));
-            applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("FixedFloat/FixedFloatNav",
-                "store-integrations-nav"));
             base.Execute(applicationBuilder);
         }
     }

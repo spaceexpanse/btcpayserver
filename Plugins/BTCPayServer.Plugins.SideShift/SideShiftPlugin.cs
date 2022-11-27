@@ -23,8 +23,16 @@ namespace BTCPayServer.Plugins.SideShift
         public override void Execute(IServiceCollection applicationBuilder)
         {
             applicationBuilder.AddSingleton<SideShiftService>();
+            applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("SideShift/SideShiftNav",
+                "store-integrations-nav"));
             applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("SideShift/StoreIntegrationSideShiftOption",
                 "store-integrations-list"));
+            // Checkout v2
+            applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("SideShift/CheckoutPaymentMethodExtension",
+                "checkout-payment-method"));
+            applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("SideShift/CheckoutPaymentExtension",
+                "checkout-payment"));
+            // Checkout Classic
             applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("SideShift/CheckoutContentExtension",
                 "checkout-bitcoin-post-content"));
             applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("SideShift/CheckoutContentExtension",
@@ -35,8 +43,6 @@ namespace BTCPayServer.Plugins.SideShift
                 "checkout-lightning-post-tabs"));
             applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("SideShift/CheckoutEnd",
                 "checkout-end"));
-            applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("SideShift/SideShiftNav",
-                "store-integrations-nav"));
             base.Execute(applicationBuilder);
         }
     }
