@@ -125,7 +125,7 @@ namespace BTCPayServer.Plugins.LiquidPlus.Controllers
                         {
                             var blindingKey =
                                 NBXplorerNetworkProvider.LiquidNBXplorerNetwork.GenerateBlindingKey(
-                                    derivatonScheme, utxo.KeyPath);
+                                    derivatonScheme, utxo.KeyPath, utxo.ScriptPubKey, nbxnet.NBitcoinNetwork);
                             sb.AppendLine($"elements-cli importblindingkey {addr} {blindingKey.ToHex()}");
                         }
                     }

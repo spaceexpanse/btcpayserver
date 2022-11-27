@@ -114,7 +114,7 @@ public class BTCPayWallet : IWallet
                     return null;
                 }
 
-                return smartTx.WalletOutputs.SingleOrDefault(smartCoin => smartCoin.OutPoint == utxo.Outpoint);
+                return smartTx.WalletOutputs.SingleOrDefault(smartCoin => smartCoin.Outpoint == utxo.Outpoint);
                            
             }))).Where(coin => coin != null);
             return result;
@@ -252,13 +252,13 @@ public class BTCPayWallet : IWallet
         if (sender is SmartCoin smartCoin && e.PropertyName == nameof(SmartCoin.CoinJoinInProgress))
         {
             
-            _logger.LogInformation($"{smartCoin.OutPoint}.CoinJoinInProgress = {smartCoin.CoinJoinInProgress}");
+            _logger.LogInformation($"{smartCoin.Outpoint}.CoinJoinInProgress = {smartCoin.CoinJoinInProgress}");
             _ = (smartCoin.CoinJoinInProgress
-                ? _utxoLocker.TryLock(smartCoin.OutPoint)
-                : _utxoLocker.TryUnlock(smartCoin.OutPoint)).ContinueWith(task =>
+                ? _utxoLocker.TryLock(smartCoin.Outpoint)
+                : _utxoLocker.TryUnlock(smartCoin.Outpoint)).ContinueWith(task =>
                 {
                     _logger.LogInformation(
-                        $"{(task.Result ? "Success" : "Fail")}: {(smartCoin.CoinJoinInProgress ? "" : "un")}locking coin for coinjoin: {smartCoin.OutPoint} ");
+                        $"{(task.Result ? "Success" : "Fail")}: {(smartCoin.CoinJoinInProgress ? "" : "un")}locking coin for coinjoin: {smartCoin.Outpoint} ");
                 });
         }
     }

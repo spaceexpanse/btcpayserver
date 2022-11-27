@@ -14,7 +14,7 @@ namespace BTCPayServer.Plugins.SideShift
 
         public override IBTCPayServerPlugin.PluginDependency[] Dependencies { get; } =
         {
-            new IBTCPayServerPlugin.PluginDependency() { Identifier = nameof(BTCPayServer), Condition = ">=1.6.0.0" }
+            new IBTCPayServerPlugin.PluginDependency() { Identifier = nameof(BTCPayServer), Condition = ">=1.7.0.0" }
         };
 
         public override string Description =>

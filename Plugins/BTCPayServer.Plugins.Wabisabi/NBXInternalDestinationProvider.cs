@@ -33,7 +33,7 @@ public class NBXInternalDestinationProvider : IDestinationProvider
         _storeId = storeId;
     }
 
-    public async Task<IEnumerable<IDestination>> GetNextDestinations(int count)
+    public async Task<IEnumerable<IDestination>> GetNextDestinations(int count, bool preferTaproot)
     {
       return  await  Task.WhenAll(Enumerable.Repeat(0, count).Select(_ =>
             _explorerClient.GetUnusedAsync(_derivationStrategy, DerivationFeature.Deposit, 0, true))).ContinueWith(task => task.Result.Select(information => information.Address));
