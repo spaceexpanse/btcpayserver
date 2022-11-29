@@ -133,7 +133,7 @@ namespace BTCPayServer.Controllers
                 Events = invoice.Events,
                 PosData = PosDataParser.ParsePosData(invoice.Metadata.PosData),
                 Archived = invoice.Archived,
-                CanRefund = CanRefund(invoiceState),
+                CanRefund = invoiceState.CanRefund(),
                 Refunds = invoice.Refunds,
                 ShowCheckout = invoice.Status == InvoiceStatusLegacy.New,
                 ShowReceipt = invoice.Status.ToModernStatus() == InvoiceStatus.Settled && (invoice.ReceiptOptions?.Enabled ?? receipt.Enabled is true),
@@ -234,16 +234,6 @@ namespace BTCPayServer.Controllers
             var network = _NetworkProvider.GetNetwork(paymentMethodId.CryptoCode);
             return network == null ? null : paymentMethodId.PaymentType.GetTransactionLink(network, txId);
         }
-        bool CanRefund(InvoiceState invoiceState)
-        {
-            return invoiceState.Status == InvoiceStatusLegacy.Confirmed ||
-                invoiceState.Status == InvoiceStatusLegacy.Complete ||
-                (invoiceState.Status == InvoiceStatusLegacy.Expired &&
-                (invoiceState.ExceptionStatus == InvoiceExceptionStatus.PaidLate ||
-                invoiceState.ExceptionStatus == InvoiceExceptionStatus.PaidOver ||
-                invoiceState.ExceptionStatus == InvoiceExceptionStatus.PaidPartial)) ||
-                invoiceState.Status == InvoiceStatusLegacy.Invalid;
-        }
 
         [HttpGet("invoices/{invoiceId}/refund")]
         [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Cookie)]
@@ -262,7 +252,7 @@ namespace BTCPayServer.Controllers
                 return NotFound();
             if (invoice.CurrentRefund?.PullPaymentDataId is null && GetUserId() is null)
                 return NotFound();
-            if (!CanRefund(invoice.GetInvoiceState()))
+            if (!invoice.GetInvoiceState().CanRefund())
                 return NotFound();
             if (invoice.CurrentRefund?.PullPaymentDataId is string ppId && !invoice.CurrentRefund.PullPaymentData.Archived)
             {
@@ -318,7 +308,7 @@ namespace BTCPayServer.Controllers
             if (invoice == null)
                 return NotFound();
 
-            if (!CanRefund(invoice.GetInvoiceState()))
+            if (!invoice.GetInvoiceState().CanRefund())
                 return NotFound();
 
             var store = GetCurrentStore();
@@ -653,9 +643,23 @@ namespace BTCPayServer.Controllers
                 return null;
             
             bool isDefaultPaymentId = false;
+            var storeBlob = store.GetStoreBlob();
+            var btcId = PaymentMethodId.Parse("BTC");
+            var lnId = PaymentMethodId.Parse("BTC_LightningLike");
             if (paymentMethodId is null)
             {
-                var enabledPaymentIds = store.GetEnabledPaymentIds(_NetworkProvider);
+                var enabledPaymentIds = store.GetEnabledPaymentIds(_NetworkProvider)
+                    // Exclude LNURL for Checkout v2
+                    .Where(pmId => storeBlob.CheckoutType == CheckoutType.V1 || pmId.PaymentType is not LNURLPayPaymentType)
+                    .ToArray();
+                
+                // Exclude Lightning if OnChainWithLnInvoiceFallback is active and we have both payment methods
+                if (storeBlob.CheckoutType == CheckoutType.V2 && storeBlob.OnChainWithLnInvoiceFallback &&
+                    enabledPaymentIds.Contains(btcId) && enabledPaymentIds.Contains(lnId))
+                {
+                    enabledPaymentIds = enabledPaymentIds.Where(pmId => pmId != lnId).ToArray();
+                }
+                
                 PaymentMethodId? invoicePaymentId = invoice.GetDefaultPaymentMethod();
                 PaymentMethodId? storePaymentId = store.GetDefaultPaymentId();
                 if (invoicePaymentId is not null)
@@ -686,6 +690,7 @@ namespace BTCPayServer.Controllers
             }
             if (paymentMethodId is null)
                 return null;
+            
             BTCPayNetworkBase network = _NetworkProvider.GetNetwork<BTCPayNetworkBase>(paymentMethodId.CryptoCode);
             if (network is null || !invoice.Support(paymentMethodId))
             {
@@ -712,12 +717,10 @@ namespace BTCPayServer.Controllers
                     return await GetInvoiceModel(invoiceId, paymentMethodId, lang);
                 }
             }
+            
             var dto = invoice.EntityToDTO();
-            var storeBlob = store.GetStoreBlob();
             var accounting = paymentMethod.Calculate();
-
             var paymentMethodHandler = _paymentMethodHandlerDictionary[paymentMethodId];
-
             var divisibility = _CurrencyNameTable.GetNumberFormatInfo(paymentMethod.GetId().CryptoCode, false)?.CurrencyDecimalDigits;
 
             switch (lang?.ToLowerInvariant())
@@ -820,16 +823,18 @@ namespace BTCPayServer.Controllers
                                           .OrderByDescending(a => a.CryptoCode == _NetworkProvider.DefaultNetwork.CryptoCode).ThenBy(a => a.PaymentMethodName).ThenBy(a => a.IsLightning ? 1 : 0)
                                           .ToList()
             };
+            
             // Exclude Lightning if OnChainWithLnInvoiceFallback is active and we have both payment methods
             if (storeBlob.CheckoutType == CheckoutType.V2 && storeBlob.OnChainWithLnInvoiceFallback)
             {
-                var onchainPM = model.AvailableCryptos.Find(c => c.PaymentMethodId == "BTC");
-                var lightningPM = model.AvailableCryptos.Find(c => c.PaymentMethodId == "BTC_LightningLike");
+                var onchainPM = model.AvailableCryptos.Find(c => c.PaymentMethodId == btcId.ToString());
+                var lightningPM = model.AvailableCryptos.Find(c => c.PaymentMethodId == lnId.ToString()); 
                 if (onchainPM != null && lightningPM != null)
                 {
                     model.AvailableCryptos.Remove(lightningPM);
                 }
             }
+            
             paymentMethodHandler.PreparePaymentModel(model, dto, storeBlob, paymentMethod);
             model.UISettings = paymentMethodHandler.GetCheckoutUISettings();
             model.PaymentMethodId = paymentMethodId.ToString();
