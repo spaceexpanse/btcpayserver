@@ -294,7 +294,6 @@ namespace BTCPayServer.Controllers.Greenfield
 
             return Ok(ToModel(walletTransactionsInfo, tx, wallet));
         }
-
         [Authorize(Policy = Policies.CanModifyStoreSettings, AuthenticationSchemes = AuthenticationSchemes.Greenfield)]
         [HttpGet("~/api/v1/stores/{storeId}/payment-methods/onchain/{cryptoCode}/wallet/utxos")]
         public async Task<IActionResult> GetOnChainWalletUTXOs(string storeId, string cryptoCode)
@@ -311,7 +310,10 @@ namespace BTCPayServer.Controllers.Greenfield
                 utxos.SelectMany(GetWalletObjectsQuery.Get).Distinct().ToArray());
             return Ok(utxos.Select(coin =>
                 {
-                    walletTransactionsInfoAsync.TryGetValue(coin.OutPoint.Hash.ToString(), out var info);
+                    walletTransactionsInfoAsync.TryGetValue(coin.OutPoint.Hash.ToString(), out var info1);
+                    walletTransactionsInfoAsync.TryGetValue(coin.Address.ToString(), out var info2);
+                    walletTransactionsInfoAsync.TryGetValue(coin.OutPoint.ToString(), out var info3);
+                    var info = _walletRepository.Merge(info1, info2, info3);
 
                     return new OnChainWalletUTXOData()
                     {
@@ -679,6 +681,7 @@ namespace BTCPayServer.Controllers.Greenfield
 
             try
             {
+                Console.WriteLine($"CREATING OBJ: {storeId}, {request!.Type}, {request.Id}");
                 await _walletRepository.SetWalletObject(
                         new WalletObjectId(walletId, request!.Type, request.Id), request.Data);
                 return await GetOnChainWalletObject(storeId, cryptoCode, request!.Type, request.Id);
@@ -695,6 +698,8 @@ namespace BTCPayServer.Controllers.Greenfield
             string objectType, string objectId,
             [FromBody] AddOnChainWalletObjectLinkRequest request)
         {
+            
+            Console.WriteLine($"CREATING OBJLINK: {storeId},  {objectType}-{objectId} to {request!.Type}-{request.Id}");
             if (request?.Type is null)
                 ModelState.AddModelError(nameof(request.Type), "Type is required");
             if (request?.Id is null)

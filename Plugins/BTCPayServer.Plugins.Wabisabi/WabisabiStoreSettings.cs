@@ -18,12 +18,10 @@ public class WabisabiStoreCoordinatorSettings
     
     public List<string> InputLabelsAllowed { get; set; } = new();
     public List<string> InputLabelsExcluded { get; set; } = new();
-    public List<string> LabelsToAddToCoinjoin { get; set; } = new();
     public bool ConsolidationMode { get; set; } = false;
     public bool RedCoinIsolation { get; set; } = false;
     public int? AnonScoreTarget { get; set; } = null;
 
     public bool SelectiveCoinjoin => InputLabelsAllowed.Any() || InputLabelsExcluded.Any();
-    public bool IsPlebMode => PlebMode;
 
 }

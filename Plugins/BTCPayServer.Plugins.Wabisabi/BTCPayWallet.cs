@@ -1,14 +1,16 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using BTCPayServer.Abstractions.Contracts;
+using BTCPayServer.Client;
 using BTCPayServer.Client.Models;
 using BTCPayServer.Payments.PayJoin;
 using Microsoft.Extensions.Logging;
 using NBitcoin;
-using NBitcoin.DataEncoders;
 using NBXplorer;
 using NBXplorer.DerivationStrategy;
 using NBXplorer.Models;
@@ -17,12 +19,172 @@ using WalletWasabi.Blockchain.Analysis.Clustering;
 using WalletWasabi.Blockchain.Keys;
 using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.Blockchain.Transactions;
-using WalletWasabi.Logging;
 using WalletWasabi.Models;
 using WalletWasabi.WabiSabi.Client;
 using WalletWasabi.Wallets;
 
 namespace BTCPayServer.Plugins.Wabisabi;
+
+
+public class Smartifier
+{
+    private readonly ExplorerClient _explorerClient;
+    private readonly DerivationStrategyBase _derivationStrategyBase;
+    private readonly IBTCPayServerClientFactory _btcPayServerClientFactory;
+    private readonly string _storeId;
+
+    public Smartifier(ExplorerClient explorerClient, DerivationStrategyBase derivationStrategyBase,
+        IBTCPayServerClientFactory btcPayServerClientFactory, string storeId)
+    {
+        _explorerClient = explorerClient;
+        _derivationStrategyBase = derivationStrategyBase;
+        _btcPayServerClientFactory = btcPayServerClientFactory;
+        _storeId = storeId;
+        _accountKeyPath = _explorerClient.GetMetadataAsync<RootedKeyPath>(_derivationStrategyBase,
+            WellknownMetadataKeys.AccountKeyPath);
+        
+    }
+
+    private ConcurrentDictionary<uint256, Task<TransactionInformation>> cached = new();
+    public readonly ConcurrentDictionary<uint256, Task<SmartTransaction>> Transactions = new();
+    public readonly  ConcurrentDictionary<OutPoint, Task<SmartCoin>> Coins = new();
+    private readonly Task<RootedKeyPath> _accountKeyPath;
+
+    public async Task LoadCoins(List<OnChainWalletUTXOData> coins, int current = 1)
+    {
+        coins = coins.Where(data => data is not null).ToList();
+        if (current > 3)
+        {
+            return;
+        }
+        var txs = coins.Select(data => data.Outpoint.Hash).Distinct();
+        foreach (uint256 tx in txs)
+        {
+            cached.TryAdd(tx, _explorerClient.GetTransactionAsync(_derivationStrategyBase, tx));
+        }
+
+        foreach (OnChainWalletUTXOData coin in coins)
+        {
+            var client = await _btcPayServerClientFactory.Create(null, _storeId);
+            var tx = await Transactions.GetOrAdd(coin.Outpoint.Hash, async uint256 =>
+            {
+                var unsmartTx = await cached[coin.Outpoint.Hash];
+                if (unsmartTx is null)
+                {
+                    return null;
+                }
+                var smartTx = new SmartTransaction(unsmartTx.Transaction,
+                    unsmartTx.Height is null ? Height.Mempool : new Height((uint)unsmartTx.Height.Value),
+                    unsmartTx.BlockHash, firstSeen: unsmartTx.Timestamp);
+                //var indexesOfOurSpentInputs = unsmartTx.Inputs.Select(output => (uint)output.Inputndex).ToArray();
+                // var ourSpentUtxos = unsmartTx.Transaction.Inputs.AsIndexedInputs()
+                //     .Where(@in => indexesOfOurSpentInputs.Contains(@in.Index)).ToDictionary(@in=> @in.Index,@in => @in);
+
+
+                var ourSpentUtxos = new Dictionary<MatchedOutput, IndexedTxIn>();
+                var potentialMatches = new Dictionary<MatchedOutput, IndexedTxIn[]>();
+                foreach (MatchedOutput matchedInput in unsmartTx.Inputs)
+                {
+                    var potentialMatchesForInput = unsmartTx.Transaction.Inputs
+                        .AsIndexedInputs()
+                        .Where(txIn => txIn.PrevOut.N == matchedInput.Index);
+                    potentialMatches.TryAdd(matchedInput, potentialMatchesForInput.ToArray());
+                    foreach (IndexedTxIn potentialMatchForInput in potentialMatchesForInput)
+                    {
+                        var ti = await cached.GetOrAdd(potentialMatchForInput.PrevOut.Hash,
+                            _explorerClient.GetTransactionAsync(_derivationStrategyBase,
+                                potentialMatchForInput.PrevOut.Hash));
+
+                        if (ti is not null)
+                        {
+                            MatchedOutput found = ti.Outputs.Find(output =>
+                                matchedInput.Index == output.Index &&
+                                matchedInput.Value == output.Value &&
+                                matchedInput.KeyPath == output.KeyPath &&
+                                matchedInput.ScriptPubKey == output.ScriptPubKey
+                            );
+                            if (found is not null)
+                            {
+                                ourSpentUtxos.Add(matchedInput, potentialMatchForInput);
+                                break;
+                            }
+                        }
+                    }
+                }      
+                var utxoObjects = await client.GetOnChainWalletObjects(_storeId, "BTC",
+                    new GetWalletObjectsRequest()
+                    {
+                        Ids = ourSpentUtxos.Select(point => point.Value.PrevOut.ToString()).ToArray(),
+                        Type = "utxo",
+                        IncludeNeighbourData = true
+                    });
+                var labelsOfOurSpentUtxos =utxoObjects.ToDictionary(data => data.Id,
+                    data => data.Links.Where(link => link.Type == "label"));
+                
+                
+                await LoadCoins(unsmartTx.Inputs.Select(output =>
+                {
+                    if (!ourSpentUtxos.TryGetValue(output, out var outputtxin))
+                    {
+                        return null;
+                    }
+                    var outpoint = outputtxin.PrevOut;
+                    var labels = labelsOfOurSpentUtxos
+                        .GetValueOrDefault(outpoint.ToString(),
+                            new List<OnChainWalletObjectData.OnChainWalletObjectLink>())
+                        .ToDictionary(link => link.Id, link => new LabelData());
+                    return new OnChainWalletUTXOData()
+                    {
+                        Timestamp = DateTimeOffset.Now,
+                        Address =
+                            output.Address?.ToString() ?? _explorerClient.Network
+                                .CreateAddress(_derivationStrategyBase, output.KeyPath, output.ScriptPubKey)
+                                .ToString(),
+                        KeyPath = output.KeyPath,
+                        Amount = ((Money)output.Value).ToDecimal(MoneyUnit.BTC),
+                        Outpoint = outpoint,
+                        Labels = labels,
+                        Confirmations = unsmartTx.Confirmations
+                    };
+                }).ToList(),current+1);
+                foreach (MatchedOutput input in unsmartTx.Inputs)
+                {
+                    if (!ourSpentUtxos.TryGetValue(input, out var outputtxin))
+                    {
+                        continue;
+                    }
+                    if (Coins.TryGetValue(outputtxin.PrevOut, out var coinTask))
+                    {
+                        var c = await coinTask;
+                        c.SpenderTransaction = smartTx;
+                        smartTx.TryAddWalletInput(c);
+                        
+                    }
+                }
+                return smartTx;
+            });
+
+            var smartCoin = await Coins.GetOrAdd(coin.Outpoint, async point =>
+            {
+
+                var unsmartTx = await cached[coin.Outpoint.Hash];
+                var pubKey = _derivationStrategyBase.GetChild(coin.KeyPath).GetExtPubKeys().First().PubKey;
+                var kp = (await _accountKeyPath).Derive(coin.KeyPath).KeyPath;
+                var hdPubKey = new HdPubKey(pubKey, kp, new SmartLabel(coin.Labels.Keys.ToList()),
+                    current == 1 ? KeyState.Clean : KeyState.Used);
+                var anonsetLabel = coin.Labels.Keys.FirstOrDefault(s => s.StartsWith("anonset-"))
+                    ?.Split("-", StringSplitOptions.RemoveEmptyEntries)?.ElementAtOrDefault(1) ?? "1";
+                hdPubKey.SetAnonymitySet(double.Parse(anonsetLabel));
+
+                return new SmartCoin(tx, coin.Outpoint.N, hdPubKey);
+            });
+            tx.TryAddWalletOutput(smartCoin);
+            
+        }
+    }
+
+}
+
 
 public class BTCPayWallet : IWallet
 {
@@ -32,6 +194,7 @@ public class BTCPayWallet : IWallet
     private readonly WabisabiStoreSettings _wabisabiStoreSettings;
     public string CoordinatorName { get; }
     private readonly IUTXOLocker _utxoLocker;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly WabisabiStoreCoordinatorSettings _settings;
     private readonly ILogger _logger;
     private static BlockchainAnalyzer BlockchainAnalyzer = new();
@@ -50,27 +213,38 @@ public class BTCPayWallet : IWallet
         _wabisabiStoreSettings = wabisabiStoreSettings;
         CoordinatorName = coordinatorName;
         _utxoLocker = utxoLocker;
+        _loggerFactory = loggerFactory;
         _settings = wabisabiStoreSettings.Settings.SingleOrDefault(settings =>
             settings.Coordinator.Equals(CoordinatorName));
-        _logger = loggerFactory.CreateLogger($"BTCPayWallet_{derivationScheme}");
+        _logger = loggerFactory.CreateLogger($"BTCPayWallet_{storeId}");
+        _smartifier = new Smartifier(explorerClient, _derivationScheme, btcPayServerClientFactory, storeId);
     }
 
     public string StoreId { get; set; }
 
-    public string WalletName => _derivationScheme.ToString();
+    public string WalletName => StoreId;
     public bool IsUnderPlebStop =>  !_settings.Enabled;
     public bool IsMixable => true;
     public IKeyChain KeyChain { get; }
     public IDestinationProvider DestinationProvider { get; }
 
-    public int AnonScoreTarget => _settings.IsPlebMode? 2:  _settings.AnonScoreTarget ?? 2;
-    public bool ConsolidationMode => !_settings.IsPlebMode && _settings.ConsolidationMode;
+    public int AnonScoreTarget => _settings.PlebMode? 2:  _settings.AnonScoreTarget ?? 2;
+    public bool ConsolidationMode => !_settings.PlebMode && _settings.ConsolidationMode;
     public TimeSpan FeeRateMedianTimeFrame { get; } = TimeSpan.FromHours(KeyManager.DefaultFeeRateMedianTimeFrameHours);
-    public bool RedCoinIsolation => !_settings.IsPlebMode &&_settings.RedCoinIsolation;
+    public bool RedCoinIsolation => !_settings.PlebMode &&_settings.RedCoinIsolation;
 
     public async Task<bool> IsWalletPrivateAsync()
     {
         return false;
+    }
+
+    private IRoundCoinSelector _coinSelector;
+    private readonly Smartifier _smartifier;
+
+    public IRoundCoinSelector GetCoinSelector()
+    {
+        _coinSelector??= new BTCPayCoinjoinCoinSelector(this,  _logger );
+        return _coinSelector;
     }
 
     public async Task<IEnumerable<SmartCoin>> GetCoinjoinCoinCandidatesAsync()
@@ -84,7 +258,8 @@ public class BTCPayWallet : IWallet
 
             var client = await _btcPayServerClientFactory.Create(null, StoreId);
             var utxos = await client.GetOnChainWalletUTXOs(StoreId, "BTC");
-            if (!_settings.IsPlebMode)
+            
+            if (!_settings.PlebMode)
             {
                 if (_settings.InputLabelsAllowed?.Any() is true)
                 {
@@ -100,24 +275,20 @@ public class BTCPayWallet : IWallet
             }
 
             var locks = await _utxoLocker.FindLocks(utxos.Select(data => data.Outpoint).ToArray());
-            utxos = utxos.Where(data => !locks.Contains(data.Outpoint));
+            utxos = utxos.Where(data => !locks.Contains(data.Outpoint)).Where(data => data.Confirmations > 0);
 
             var kp = await _explorerClient.GetMetadataAsync<RootedKeyPath>(_derivationScheme,
                 WellknownMetadataKeys.AccountKeyPath);
-            var result = (await Task.WhenAll(utxos.Where(data => data.Confirmations > 0).Select(async utxo =>
+            await _smartifier.LoadCoins(utxos.ToList());
+            var resultX =  await Task.WhenAll(_smartifier.Coins.Where(pair =>  utxos.Any(data => data.Outpoint == pair.Key))
+                .Select(pair => pair.Value));
+            foreach (var coin in resultX)
             {
-                var tx = await _explorerClient.GetTransactionAsync(_derivationScheme, utxo.Outpoint.Hash);
                 
-                var smartTx = ConstructSmartTx(tx, utxo.Labels?.Keys?.ToArray(), kp);
-                if (smartTx is null)
-                {
-                    return null;
-                }
+                coin.PropertyChanged += CoinOnPropertyChanged;
+            }
 
-                return smartTx.WalletOutputs.SingleOrDefault(smartCoin => smartCoin.Outpoint == utxo.Outpoint);
-                           
-            }))).Where(coin => coin != null);
-            return result;
+            return resultX;
         }
         catch (Exception e)
         {
@@ -132,23 +303,9 @@ public class BTCPayWallet : IWallet
         var derivation = _derivationScheme.GetChild(coinKeyPath).GetExtPubKeys().First().PubKey;
         var hdPubKey = new HdPubKey(derivation, kp.Derive(coinKeyPath).KeyPath, SmartLabel.Empty,
             KeyState.Clean);
-        if (_settings.IsPlebMode || _settings.AnonScoreTarget is null)
-        {
-            var anonset = labels.Contains("coinjoin") &&
-                          BlockchainAnalyzer.StdDenoms.Contains(amount.Satoshi)
-                ? 2
-                : 1;
-            hdPubKey.SetAnonymitySet(anonset);
-        }
-        else
-        {
-            //TODO: Load anonscore from script label
-            if (hdPubKey.AnonymitySet == HdPubKey.DefaultHighAnonymitySet)
-            {
-                hdPubKey.SetAnonymitySet(1);
-            }
-        }
-        
+        var anonsetLabel = labels.FirstOrDefault(s => s.StartsWith("anonset-"))
+            ?.Split("-", StringSplitOptions.RemoveEmptyEntries)?.ElementAtOrDefault(1)?? "1";
+        hdPubKey.SetAnonymitySet(double.Parse(anonsetLabel));
        
         hdPubKey.SetLabel(new SmartLabel(labels));
 
@@ -201,16 +358,12 @@ public class BTCPayWallet : IWallet
             result.TryAddWalletOutput(coin);
         }
 
-        if (!_settings.IsPlebMode && _settings.AnonScoreTarget is not null)
-        {
-            BlockchainAnalyzer.Analyze(result);
-        }
-
         return result;
     }
 
     public async Task<IEnumerable<SmartTransaction>> GetTransactionsAsync()
     {
+        return Array.Empty<SmartTransaction>();
         var kp = await _explorerClient.GetMetadataAsync<RootedKeyPath>(_derivationScheme,
             WellknownMetadataKeys.AccountKeyPath);
         var client = await _btcPayServerClientFactory.Create(null, StoreId);
@@ -222,28 +375,138 @@ public class BTCPayWallet : IWallet
         }))).Where(transaction => transaction != null);
     }
 
-    public async Task RegisterCoinjoinTransaction(Transaction tx, uint256 round)
+
+
+    public async Task RegisterCoinjoinTransaction(CoinJoinResult result)
     {
         try
         {
-            if (_settings.LabelsToAddToCoinjoin?.Any() is true)
-            {
-                var client = await _btcPayServerClientFactory.Create(null, StoreId);
+            var client = await _btcPayServerClientFactory.Create(null, StoreId);
+            var kp = await _explorerClient.GetMetadataAsync<RootedKeyPath>(_derivationScheme,
+                WellknownMetadataKeys.AccountKeyPath);
+            
+            await MarkTransactionAsCoinjoin(result, client);
 
-                await client.PatchOnChainWalletTransaction(StoreId, "BTC", tx.GetHash().ToString(),
-                    new PatchOnChainTransactionRequest()
-                    {
-                        Labels = _settings.LabelsToAddToCoinjoin
-                            .Select(s =>
-                                s.Replace("{Coordinator}", CoordinatorName).Replace("{RoundId}", round.ToString()))
-                            .ToList()
-                    },
-                    true);
+            List<(IndexedTxOut txout, Task<KeyPathInformation>)> scriptInfos = new();
+            await client.AddOrUpdateOnChainWalletObject(StoreId, "BTC", new AddOnChainWalletObjectRequest("label", "coinjoin-std-denom"));
+            await client.AddOrUpdateOnChainWalletObject(StoreId, "BTC", new AddOnChainWalletObjectRequest("label", "coinjoin-change"));
+            await client.AddOrUpdateOnChainWalletObject(StoreId, "BTC", new AddOnChainWalletObjectRequest("label", "coinjoin-payment"));
+
+            foreach (var script in result.RegisteredOutputs)
+            {
+                var txout = result.Transaction.Outputs.AsIndexedOutputs()
+                    .Single(@out => @out.TxOut.ScriptPubKey == script);
+
+                
+                //create the utxo object 
+                var newutxo = txout.ToCoin().Outpoint.ToString();
+                var utxoObject = new AddOnChainWalletObjectRequest()
+                {
+                    Id = newutxo,
+                    Type = "utxo"
+                };
+                await client.AddOrUpdateOnChainWalletObject(StoreId, "BTC", utxoObject);
+                
+                //this was not a mix to self, but rather a payment
+                if (result.HandledPayments.Any(pair => pair.Key == txout.TxOut))
+                {
+                    var payment = result.HandledPayments.Single(pair => pair.Key.ScriptPubKey == script);
+                    await client.AddOrUpdateOnChainWalletLink(StoreId, "BTC", utxoObject, new AddOnChainWalletObjectLinkRequest("label", "coinjoin-payment"));
+                    continue;
+                }
+
+                scriptInfos.Add((txout, _explorerClient.GetKeyInformationAsync(_derivationScheme, script)));
+                
             }
+
+            await Task.WhenAll(scriptInfos.Select(t => t.Item2));
+                scriptInfos = scriptInfos.Where(tuple => tuple.Item2.Result is not null).ToList();
+                var smartTx = new SmartTransaction(result.Transaction, new Height(HeightType.Unknown));
+                result.RegisteredCoins.ForEach(coin =>
+                {
+                    coin.HdPubKey.SetKeyState(KeyState.Used);
+                    coin.SpenderTransaction = smartTx;
+                    smartTx.TryAddWalletInput(coin);
+                });
+                
+                
+                scriptInfos.ForEach(information =>
+                {
+                    var derivation = _derivationScheme.GetChild(information.Item2.Result.KeyPath).GetExtPubKeys().First().PubKey;
+                    var hdPubKey = new HdPubKey(derivation, kp.Derive(information.Item2.Result.KeyPath).KeyPath, SmartLabel.Empty,
+                        KeyState.Used);
+                    
+                    var coin =new SmartCoin(smartTx, information.txout.N, hdPubKey);
+                    smartTx.TryAddWalletOutput(coin);
+                });
+                try
+                {
+
+                    BlockchainAnalyzer.Analyze(smartTx);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                }
+                foreach (SmartCoin smartTxWalletOutput in smartTx.WalletOutputs)
+                {
+                    var utxoObject = new AddOnChainWalletObjectRequest()
+                    {
+                        Id = smartTxWalletOutput.Outpoint.ToString(),
+                        Type = "utxo"
+                    };
+                    await client.AddOrUpdateOnChainWalletObject(StoreId, "BTC", new AddOnChainWalletObjectRequest( "utxo", smartTxWalletOutput.Outpoint.ToString()));
+                    await client.AddOrUpdateOnChainWalletObject(StoreId, "BTC", new AddOnChainWalletObjectRequest( "label", $"anonset-{smartTxWalletOutput.AnonymitySet}"));
+
+                    if (smartTxWalletOutput.AnonymitySet != 1)
+                    {
+                        await client.AddOrUpdateOnChainWalletLink(StoreId, "BTC", utxoObject, 
+                            new AddOnChainWalletObjectLinkRequest() {Id =  $"anonset-{smartTxWalletOutput.AnonymitySet}", Type = "label"}, CancellationToken.None);
+
+                    }
+                   
+                    if (BlockchainAnalyzer.StdDenoms.Contains(smartTxWalletOutput.TxOut.Value.Satoshi))
+                    {
+                    
+                        await client.AddOrUpdateOnChainWalletLink(StoreId, "BTC", utxoObject,
+                            new AddOnChainWalletObjectLinkRequest() {Id = "coinjoin-std-denom", Type = "label"},
+                            CancellationToken.None);
+                    }
+                    else
+                    {
+                   
+                        await client.AddOrUpdateOnChainWalletLink(StoreId, "BTC", utxoObject,
+                            new AddOnChainWalletObjectLinkRequest() {Id = "coinjoin-change", Type = "label"},
+                            CancellationToken.None);
+                    }
+                }
+            
         }
         catch (Exception e)
         {
             // ignored
+        }
+    }
+
+    private async Task MarkTransactionAsCoinjoin(CoinJoinResult result, BTCPayServerClient client)
+    {
+        //mark the tx as a coinjoin at a specific coordinator
+        var txObject = new AddOnChainWalletObjectRequest() {Id = result.Transaction.GetHash().ToString(), Type = "tx"};
+        var labels = new[]
+        {
+            new AddOnChainWalletObjectRequest() {Id = "coinjoin", Type = "label"},
+            new AddOnChainWalletObjectRequest() {Id = CoordinatorName, Type = "label"},
+        };
+
+        await client.AddOrUpdateOnChainWalletObject(StoreId, "BTC", txObject);
+        foreach (var label in labels)
+        {
+            await client.AddOrUpdateOnChainWalletObject(StoreId, "BTC", label);
+            await client.AddOrUpdateOnChainWalletLink(StoreId, "BTC", txObject, new AddOnChainWalletObjectLinkRequest()
+            {
+                Id = label.Id,
+                Type = label.Type
+            }, CancellationToken.None);
         }
     }
 
@@ -279,4 +542,5 @@ public class BTCPayWallet : IWallet
 
         _logger.LogInformation($"unlocked utxos: {string.Join(',', unlocked)}");
     }
+
 }

@@ -50,12 +50,6 @@ namespace BTCPayServer.Plugins.Wabisabi
 
             switch (actualCommand)
             {
-                case "coinjoin-label-add":
-                    coord.LabelsToAddToCoinjoin.Add("");
-                    return View(vm);
-                case "coinjoin-label-remove":
-                    coord.LabelsToAddToCoinjoin.Remove(commandIndex);
-                    return View(vm);
                 case "exclude-label-add":
                     coord.InputLabelsExcluded.Add("");
                     return View(vm);
@@ -75,7 +69,6 @@ namespace BTCPayServer.Plugins.Wabisabi
                     {
                         settings.InputLabelsAllowed = settings.InputLabelsAllowed.Where(s => !string.IsNullOrEmpty(s)).Distinct().ToList();
                         settings.InputLabelsExcluded = settings.InputLabelsExcluded.Where(s => !string.IsNullOrEmpty(s)).Distinct().ToList();
-                        settings.LabelsToAddToCoinjoin = settings.LabelsToAddToCoinjoin.Where(s => !string.IsNullOrEmpty(s)).Distinct().ToList();
                     } 
                     await _WabisabiService.SetWabisabiForStore(storeId, vm);
                     TempData["SuccessMessage"] = "Wabisabi settings modified";

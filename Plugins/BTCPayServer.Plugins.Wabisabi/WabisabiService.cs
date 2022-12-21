@@ -36,7 +36,6 @@ namespace BTCPayServer.Plugins.Wabisabi
                     res.Settings.Add(new WabisabiStoreCoordinatorSettings()
                     {
                         Coordinator = wabisabiCoordinatorManager.CoordinatorName,
-                        LabelsToAddToCoinjoin = new List<string>(){"coinjoin", "coinjoin-{Coordinator}"}
                     });
                 }
             }

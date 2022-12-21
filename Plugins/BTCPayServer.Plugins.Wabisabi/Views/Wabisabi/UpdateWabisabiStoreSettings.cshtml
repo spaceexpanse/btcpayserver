@@ -74,7 +74,7 @@
                         </div>
                     </div>
                 </div>
-                <div id="@s.Coordinator-advanced" class="@(s.IsPlebMode ? "d-none" : "")">
+                <div id="@s.Coordinator-advanced" class="@(s.PlebMode ? "d-none" : "")">
                     <div class="form-group">
 
                         <label asp-for="Settings[index].ConsolidationMode" class="form-check-label">Use Anon score model</label>
@@ -143,29 +143,7 @@
                             <button name="command" value="exclude-label-add:@s.Coordinator" type="submit" class="btn btn-secondary btn-sm">Add</button>
                         </div>
                     </div>
-                    <div class="list-group  form-group">
-                        <div class="list-group-item h6 mb-0">Add labels to coins from coinjoins </div>
-                        @if (s.LabelsToAddToCoinjoin?.Any() is not true)
-                        {
-                            <div class="list-group-item">No labels applied to coinjoins</div>
-                        }
-                        else
-                        {
-                            @for (var xIndex = 0; xIndex < s.LabelsToAddToCoinjoin.Count; xIndex++)
-                            {
-                                <div class="list-group-item">
-                                    <div class="input-group input-group-sm">
-                                        <input asp-for="Settings[index].LabelsToAddToCoinjoin[xIndex]" type="text" class="form-control"/>
-                                        <button name="command" value="coinjoin-label-remove:@s.Coordinator:@s.LabelsToAddToCoinjoin[xIndex]" type="submit" class="btn btn-secondary btn-sm">Remove</button>
-                                    </div>
-
-                                </div>
-                            }
-                        }
-                        <div class="list-group-item">
-                            <button name="command" value="coinjoin-label-add:@s.Coordinator" type="submit" class="btn btn-secondary btn-sm">Add</button>
-                        </div>
-                    </div>
+                   
                 </div>
                 <div>
                     @{

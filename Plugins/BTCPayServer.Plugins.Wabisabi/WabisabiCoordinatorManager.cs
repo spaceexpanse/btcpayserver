@@ -22,7 +22,7 @@ namespace BTCPayServer.Plugins.Wabisabi;
 public class WabisabiCoordinatorManager : IWabisabiCoordinatorManager
 {
     private readonly IUTXOLocker _utxoLocker;
-    private readonly ILogger<WabisabiCoordinatorManager> _logger;
+    private readonly ILogger _logger;
     public string CoordinatorDisplayName { get; }
     public string CoordinatorName { get; set; }
     public Uri Coordinator { get; set; }
@@ -48,7 +48,7 @@ public class WabisabiCoordinatorManager : IWabisabiCoordinatorManager
         WalletProvider = ActivatorUtilities.CreateInstance<WalletProvider>(serviceProvider);
         WalletProvider.UtxoLocker = _utxoLocker;
         WalletProvider.CoordinatorName = CoordinatorName;
-        _logger = loggerFactory.CreateLogger<WabisabiCoordinatorManager>();
+        _logger = loggerFactory.CreateLogger(coordinatorName);
         WasabiHttpClientFactory = new HttpClientFactory(torEndpoint, () => Coordinator);
         var roundStateUpdaterCircuit = new PersonCircuit();
         var roundStateUpdaterHttpClient =
@@ -61,57 +61,54 @@ public class WabisabiCoordinatorManager : IWabisabiCoordinatorManager
             WasabiCoordinatorStatusFetcher, "CoinJoinCoordinatorIdentifier");
         CoinJoinManager.StatusChanged += OnStatusChanged;
         
+        
     }
 
     private void OnStatusChanged(object sender, StatusChangedEventArgs e)
     {
+        
         switch (e)
         {
             case CoinJoinStatusEventArgs coinJoinStatusEventArgs:
-                switch (coinJoinStatusEventArgs.CoinJoinProgressEventArgs)
-                {
-                    case RoundEnded roundEnded:
-                        
-                        switch (roundEnded.LastRoundState.EndRoundState)
-                        {
-                            
-                            case EndRoundState.TransactionBroadcasted:
-                                Task.Run(async () =>
-                                {
-                                    var wallets = await CoinJoinManager.WalletProvider.GetWalletsAsync();
-                                    foreach (BTCPayWallet wallet in wallets)
-                                    {
-                                        await wallet.RegisterCoinjoinTransaction(
-                                            roundEnded.LastRoundState.Assert<SigningState>().CreateTransaction(), roundEnded.LastRoundState.Id);
-                                    }
-
-                                });
-                                break;
-                            default:
-                                _logger.LogInformation("unlocking coins because round failed");
-                                _utxoLocker.TryUnlock(
-                                    roundEnded.LastRoundState.CoinjoinState.Inputs.Select(coin => coin.Outpoint).ToArray());
-                                break;
-                        }
-                        break;
-                }
-                _logger.LogInformation(e.GetType() +
-                                       coinJoinStatusEventArgs.CoinJoinProgressEventArgs.GetType().ToString() + "   :" +
+                _logger.LogInformation(coinJoinStatusEventArgs.CoinJoinProgressEventArgs.GetType().ToString() + "   :" +
                                        e.Wallet.WalletName);
                 break;
             case CompletedEventArgs completedEventArgs:
-                _logger.LogInformation(e.GetType() + completedEventArgs.CompletionStatus.ToString() + "   :" +
+                
+                var result = completedEventArgs.CoinJoinResult;
+                
+                if (completedEventArgs.CompletionStatus == CompletionStatus.Success)
+                {
+                    Task.Run(async () =>
+                    {
+                        
+                        var wallet = (BTCPayWallet) e.Wallet;
+                        await wallet.RegisterCoinjoinTransaction(result);
+                                    
+                    });
+                }
+                else
+                {
+                    Task.Run(async () =>
+                    {
+                        _logger.LogInformation("unlocking coins because round failed");
+                        await _utxoLocker.TryUnlock(
+                            result.RegisteredCoins.Select(coin => coin.Outpoint).ToArray());
+                    });
+                    break;
+                }
+                _logger.LogInformation("Coinjoin complete!   :" +
                                        e.Wallet.WalletName);
                 break;
             case LoadedEventArgs loadedEventArgs:
                 _ = CoinJoinManager.StartAsync(loadedEventArgs.Wallet, false, false, CancellationToken.None);
-                _logger.LogInformation(e.GetType() + "   :" + e.Wallet.WalletName);
+                _logger.LogInformation( "Loaded wallet  :" + e.Wallet.WalletName);
                 break;
             case StartErrorEventArgs errorArgs:
-                _logger.LogInformation(e.GetType() + errorArgs.Error.ToString() + "   :" + e.Wallet.WalletName);
+                _logger.LogInformation("Could not start wallet for coinjoin" + errorArgs.Error.ToString() + "   :" + e.Wallet.WalletName);
                 break;
             case StoppedEventArgs stoppedEventArgs:
-                _logger.LogInformation(e.GetType() + " " + stoppedEventArgs.Reason + "   :" + e.Wallet.WalletName);
+                _logger.LogInformation("Stopped wallet for coinjoin: " + stoppedEventArgs.Reason + "   :" + e.Wallet.WalletName);
                 break;
             default:
                 _logger.LogInformation(e.GetType() + "   :" + e.Wallet.WalletName);
@@ -119,9 +116,9 @@ public class WabisabiCoordinatorManager : IWabisabiCoordinatorManager
         }
     }
 
-
     public Task StartAsync(CancellationToken cancellationToken)
     {
+        
         RoundStateUpdater.StartAsync(cancellationToken);
         WasabiCoordinatorStatusFetcher.StartAsync(cancellationToken);
         CoinJoinManager.StartAsync(cancellationToken);

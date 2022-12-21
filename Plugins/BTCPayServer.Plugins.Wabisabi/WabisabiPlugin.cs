@@ -17,7 +17,6 @@ namespace BTCPayServer.Plugins.Wabisabi;
 
 public class WabisabiPlugin : BaseBTCPayServerPlugin
 {
-    private CoinJoinManager _coinjoinManager;
     private ILogger _logger;
     public override string Identifier => "BTCPayServer.Plugins.Wabisabi";
     public override string Name => "Wabisabi";

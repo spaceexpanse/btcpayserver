@@ -2,16 +2,15 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using BTCPayServer.Client;
 using BTCPayServer.Client.Models;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NBitcoin;
 using NBitcoin.Payment;
 using NBXplorer;
 using NBXplorer.DerivationStrategy;
 using Newtonsoft.Json.Linq;
+using WalletWasabi.Extensions;
 using WalletWasabi.WabiSabi.Backend.Rounds;
 using WalletWasabi.WabiSabi.Client;
 
@@ -33,12 +32,12 @@ public class NBXInternalDestinationProvider : IDestinationProvider
         _storeId = storeId;
     }
 
-    public async Task<IEnumerable<IDestination>> GetNextDestinations(int count, bool preferTaproot)
+    public async Task<IEnumerable<IDestination>> GetNextDestinationsAsync(int count, bool preferTaproot)
     {
       return  await  Task.WhenAll(Enumerable.Repeat(0, count).Select(_ =>
             _explorerClient.GetUnusedAsync(_derivationStrategy, DerivationFeature.Deposit, 0, true))).ContinueWith(task => task.Result.Select(information => information.Address));
     }
-    public async Task<IEnumerable<PendingPayment>> GetPendingPayments( RoundParameters roundParameters, ImmutableArray<AliceClient> registeredAliceClients)
+    public async Task<IEnumerable<PendingPayment>> GetPendingPaymentsAsync( UtxoSelectionParameters roundParameters)
     {
         try
         {
@@ -59,16 +58,22 @@ public class NBXInternalDestinationProvider : IDestinationProvider
                    destination = BitcoinAddress.Create(data.Destination, _explorerClient.Network.NBitcoinNetwork);
                }
 
+               var value = new Money((decimal)data.PaymentMethodAmount, MoneyUnit.BTC);
+               if (!roundParameters.AllowedOutputAmounts.Contains(value) ||
+                   !roundParameters.AllowedOutputScriptTypes.Contains(destination.ScriptPubKey.GetScriptType()))
+               {
+                   return null;
+               }
                return new PendingPayment()
                {
                    Destination = destination,
-                   Value = new Money((decimal)data.PaymentMethodAmount, MoneyUnit.BTC),
+                   Value =value,
                    PaymentStarted = PaymentStarted(_storeId, data.Id),
                    PaymentFailed = PaymentFailed(_storeId, data.Id),
                    PaymentSucceeded = PaymentSucceeded(_storeId, data.Id,
                        _explorerClient.Network.NBitcoinNetwork.ChainName == ChainName.Mainnet),
                };
-           }).ToArray();
+           }).Where(payment => payment is not null).ToArray();
         }
         catch (Exception e)
         {
