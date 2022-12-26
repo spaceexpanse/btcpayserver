@@ -101,11 +101,12 @@ public class WabisabiCoordinatorManager : IWabisabiCoordinatorManager
                                        e.Wallet.WalletName);
                 break;
             case LoadedEventArgs loadedEventArgs:
-                _ = CoinJoinManager.StartAsync(loadedEventArgs.Wallet, false, false, CancellationToken.None);
+                var stopWhenAllMixed = (loadedEventArgs.Wallet as BTCPayWallet)?.BatchPayments is false;
+                _ = CoinJoinManager.StartAsync(loadedEventArgs.Wallet, stopWhenAllMixed, false, CancellationToken.None);
                 _logger.LogInformation( "Loaded wallet  :" + e.Wallet.WalletName);
                 break;
             case StartErrorEventArgs errorArgs:
-                _logger.LogInformation("Could not start wallet for coinjoin" + errorArgs.Error.ToString() + "   :" + e.Wallet.WalletName);
+                _logger.LogInformation("Could not start wallet for coinjoin:" + errorArgs.Error.ToString() + "   :" + e.Wallet.WalletName);
                 break;
             case StoppedEventArgs stoppedEventArgs:
                 _logger.LogInformation("Stopped wallet for coinjoin: " + stoppedEventArgs.Reason + "   :" + e.Wallet.WalletName);

@@ -32,7 +32,7 @@ public class WasabiCoordinatorStatusFetcher : PeriodicRunner, IWasabiBackendStat
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Could not connect to the coordinator");
+            _logger.LogError(e, "Could not connect to the coordinator ");
         }
     }
 }

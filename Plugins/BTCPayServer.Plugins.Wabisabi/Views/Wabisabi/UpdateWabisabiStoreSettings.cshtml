@@ -27,11 +27,19 @@
         <input asp-for="Settings[index].Coordinator" type="hidden"/>
         var s = Model.Settings[index];
 
-        var coordinator = (WabisabiCoordinatorManager) _coordinatorManagers.Single(manager => manager.CoordinatorName == s.Coordinator);
+        var coordinator = (WabisabiCoordinatorManager) _coordinatorManagers.SingleOrDefault(manager => manager.CoordinatorName == s.Coordinator);
+        if (coordinator is null)
+        {
+            continue;
+        }
         <div class="card  mt-3">
-            <div class="card-header d-flex justify-content-between" data-bs-toggle="collapse" data-bs-target="#collapse-@s.Coordinator">
+            <div class="card-header d-flex justify-content-between">
                 <div>
-                    <h3>@coordinator.CoordinatorDisplayName</h3>
+                    <div class="d-flex">
+
+                        <h3>@coordinator.CoordinatorDisplayName</h3>
+                       
+                    </div>
 
                     <span class="text-muted">@coordinator.Coordinator</span>
                     <div>
@@ -41,7 +49,13 @@
                         }
                         else
                         {
-                            <p>Coordinator Status: Connected</p>
+                            <p>
+                                Coordinator Status: Connected
+                                <a href="@(coordinator.Coordinator)api/v4/Wasabi/legaldocuments"
+                                   target="_blank" rel="noreferrer noopener">
+                                    T&C
+                                </a>
+                            </p>
                         }
                     </div>
                 </div>
@@ -78,12 +92,12 @@
                     <div class="form-group">
 
                         <label asp-for="Settings[index].ConsolidationMode" class="form-check-label">Use Anon score model</label>
-                        <input type="number" class="form-control" asp-for="Settings[index].AnonScoreTarget" placeholder="target anon score">
+                        <input type="number" class="form-control" asp-for="Settings[index].AnonymitySetTarget" placeholder="target anon score">
 
-                        <p class="text-muted">Scores your coinjoined utxos based on how many other utxos in the coinjoin had the same value.<br/> Leave blank to use the default, which is to consider any utxo created in a coinjoin that is of a "standard denomination" as sufficient. </p>
+                        <p class="text-muted">Scores your coinjoined utxos based on how many other utxos in the coinjoin (and other previous coinjoin rounds) had the same value.<br/> Anonset score computation is not an exact science, and when using coordinators with massive liquidity, is not that important as all rounds (past, present, future) contribute to your privacy.</p>
                     </div>
                     <div class="form-group form-check">
-                        <label asp-for="Settings[index].ConsolidationMode" class="form-check-label"></label>
+                        <label asp-for="Settings[index].ConsolidationMode" class="form-check-label">Coinsolidation mode</label>
                         <input asp-for="Settings[index].ConsolidationMode" type="checkbox" class="form-check-input"/>
                         <p class="text-muted">Feed as many coins to the coinjoin as possible.</p>
                     </div>
@@ -91,6 +105,11 @@
                         <label asp-for="Settings[index].RedCoinIsolation" class="form-check-label">Cautious coinjoin entry mode </label>
                         <input asp-for="Settings[index].RedCoinIsolation" type="checkbox" class="form-check-input"/>
                         <p class="text-muted">Only allow a single non-private coin into a coinjoin.</p>
+                    </div>
+                    <div class="form-group form-check">
+                        <label asp-for="Settings[index].BatchPayments" class="form-check-label">Batch payments</label>
+                        <input asp-for="Settings[index].BatchPayments" type="checkbox" class="form-check-input"/>
+                        <p class="text-muted">Batch your pending payments (on-chain payouts awaiting payment) inside coinjoins.</p>
                     </div>
                     @* <div class="form-group form-check"> *@
                     @*     <label class="form-check-label btn-link" data-bs-toggle="collapse" href="#collapse-coinselect-@s.Coordinator">Selective coins </label> *@
@@ -143,15 +162,23 @@
                             <button name="command" value="exclude-label-add:@s.Coordinator" type="submit" class="btn btn-secondary btn-sm">Add</button>
                         </div>
                     </div>
-                   
+
                 </div>
                 <div>
                     @{
-                        var w = (await coordinator.WalletProvider.GetWalletsAsync())?.SingleOrDefault(wallet => wallet is BTCPayWallet btcPayWallet && btcPayWallet.StoreId == storeId && !btcPayWallet.IsUnderPlebStop);
+                        var w = (BTCPayWallet) (await coordinator.WalletProvider.GetWalletsAsync())?.SingleOrDefault(wallet => wallet is BTCPayWallet btcPayWallet && btcPayWallet.StoreId == storeId && !btcPayWallet.IsUnderPlebStop);
 
 
                         if (w is not  null)
                         {
+                            @if (!w.IsMixable)
+                            {
+                                <div class="alert alert-danger d-flex align-items-center" role="alert">
+                                    <vc:icon symbol="warning"/>
+                                    <span class="ms-3">This wallet is not a hot wallet and will not be able to join the coinjoins.</span>
+                                </div>
+                            }
+                            <div>Wallet privacy percentage: @((await w.GetPrivacyPercentageAsync()) * 100)%</div>
                             <button class="btn btn-link" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-@s.Coordinator-coins">Show coin candidates</button>
                             var coinz = await w.GetCoinjoinCoinCandidatesAsync();
                             <ul id="collapse-@s.Coordinator-coins" class=" collapse bg-light list-group">
@@ -176,6 +203,9 @@
     }
 
     <button name="command" type="submit" value="save" class="btn btn-primary mt-2">Save</button>
+    <button name="command" type="submit" value="save" class="btn btn-secondary mt-2" disabled="disabled">Start your own coordinator - Coming soon</button>
+    <button name="command" type="submit" value="save" class="btn btn-secondary mt-2" disabled="disabled">Discover coordinators over Nostr - Coming soon</button>
+
 
 </form>
 

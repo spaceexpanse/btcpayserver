@@ -92,14 +92,19 @@ public class NBXInternalDestinationProvider : IDestinationProvider
                 {
                     Id = tuple.transactionId.ToString(),
                     OutputIndex = tuple.outputIndex,
-                    Link = mainnet? $"https://mempool.space/tx/{tuple.outputIndex}:{tuple.transactionId}#flow" : 
-                        $"https://mempool.space/testnet/tx/{tuple.outputIndex}:{tuple.transactionId}#flow"
+                    Link = ComputeTxUrl(mainnet, tuple.transactionId.ToString(), tuple.outputIndex.ToString())
                 })
             });
 
     }
 
-
+    public static string ComputeTxUrl(bool mainnet,  string tx, string outputIndex = null)
+    {
+        var path = $"tx/{(outputIndex is null ? tx : $"{outputIndex}:{tx}#flow")}";
+        return mainnet
+            ? $"https://mempool.space/{path}"
+            : $"https://mempool.space/testnet/{path}";
+    }
     private Action PaymentFailed(string storeId, string payoutId)
     {
         return () =>

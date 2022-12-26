@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using BTCPayServer.Abstractions.Contracts;
@@ -10,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using NBitcoin;
 using NBXplorer;
 using NBXplorer.DerivationStrategy;
+using WalletWasabi.Blockchain.TransactionOutputs;
 using WalletWasabi.WabiSabi.Client;
 using WalletWasabi.Wallets;
 
@@ -34,6 +36,63 @@ public class WalletProvider: IWalletProvider
         _loggerFactory = loggerFactory;
     }
 
+    public async Task<IWallet> GetWalletAsync(string name, WabisabiStoreSettings wabisabiStoreSettings = null)
+    {
+        wabisabiStoreSettings ??= await
+            _storeRepository.GetSettingAsync<WabisabiStoreSettings>(name, nameof(WabisabiStoreSettings));
+        return await _memoryCache.GetOrCreateAsync<IWallet>($"Wabisabi_WalletProvider_{name}",
+            async cache =>
+            {
+                cache.AbsoluteExpiration = DateTimeOffset.Now.AddMinutes(5);
+                try
+                {
+                    var client = await _btcPayServerClientFactory.Create(null, name);
+                    var pm = await client.GetStoreOnChainPaymentMethod(name, "BTC");
+
+                    if (!pm.Enabled)
+                    {
+                        return null;
+                    }
+
+                    var explorerClient = _explorerClientProvider.GetExplorerClient("BTC");
+                    var derivationStrategy =
+                        explorerClient.Network.DerivationStrategyFactory.Parse(pm.DerivationScheme);
+
+                    var masterKey = await explorerClient.GetMetadataAsync<BitcoinExtKey>(derivationStrategy,
+                        WellknownMetadataKeys.MasterHDKey);
+                    var accountKey = await explorerClient.GetMetadataAsync<BitcoinExtKey>(derivationStrategy,
+                        WellknownMetadataKeys.AccountHDKey);
+
+                    var keychain = new BTCPayKeyChain(explorerClient, derivationStrategy, masterKey, accountKey);
+
+                    var destinationProvider =
+                        new NBXInternalDestinationProvider(explorerClient, derivationStrategy, client, name);
+
+                    async Task<Smartifier> CreateSmartifier()
+                    {
+                        return await _memoryCache.GetOrCreateAsync($"Wabisabi_Smartifier_{name}",
+                            async entry => new Smartifier(explorerClient, derivationStrategy,
+                                _btcPayServerClientFactory, name, CoinOnPropertyChanged));
+                    }
+
+                    var smartifier = await CreateSmartifier();
+                    if (smartifier.DerivationScheme != derivationStrategy)
+                    {
+                        _memoryCache.Remove($"Wabisabi_Smartifier_{name}");
+                        smartifier = await CreateSmartifier();
+                    }
+
+                    return new BTCPayWallet(derivationStrategy, explorerClient, keychain, destinationProvider,
+                        _btcPayServerClientFactory, name, wabisabiStoreSettings, CoordinatorName, UtxoLocker,
+                        _loggerFactory, smartifier);
+                }
+                catch (Exception e)
+                {
+                    return null;
+                }
+            });
+    }
+
     public async Task<IEnumerable<IWallet>> GetWalletsAsync()
     {
         var explorerClient = _explorerClientProvider.GetExplorerClient("BTC");
@@ -42,48 +101,12 @@ public class WalletProvider: IWalletProvider
         {
             return Array.Empty<IWallet>();
         }
-       return await _memoryCache.GetOrCreateAsync<IEnumerable<IWallet>>("Wabisabi_WalletProvider", async entry =>
-        {
-            
-            var configuredStores =
-                await _storeRepository.GetSettingsAsync<WabisabiStoreSettings>(nameof(WabisabiStoreSettings));
-
-            
-            var tasks = await Task.WhenAll(configuredStores.Where(pair => pair.Value?.Settings.Any(settings => settings.Coordinator == CoordinatorName && settings.Enabled) is true).Select(
-                async pair =>
-                {
-                    try
-                    {
-                        var client = await _btcPayServerClientFactory.Create(null, pair.Key);
-                        var pm = await client.GetStoreOnChainPaymentMethod(pair.Key, "BTC");
-                        
-                        if (!pm.Enabled)
-                        {
-                            return null;
-                        }
-
-                        var derivationStrategy =
-                            explorerClient.Network.DerivationStrategyFactory.Parse(pm.DerivationScheme);
-
-                        var masterKey = await explorerClient.GetMetadataAsync<BitcoinExtKey>(derivationStrategy,
-                            WellknownMetadataKeys.MasterHDKey);
-                        var accountKey = await explorerClient.GetMetadataAsync<BitcoinExtKey>(derivationStrategy,
-                            WellknownMetadataKeys.AccountHDKey);
-
-                        var keychain = new BTCPayKeyChain(explorerClient, derivationStrategy, masterKey, accountKey);
-
-                        var destinationProvider = new NBXInternalDestinationProvider(explorerClient, derivationStrategy, client, pair.Key);
-                        return new BTCPayWallet(derivationStrategy, explorerClient, keychain, destinationProvider, _btcPayServerClientFactory, pair.Key, configuredStores[pair.Key], CoordinatorName, UtxoLocker, _loggerFactory );
-                    }
-                    catch (Exception e)
-                    {
-                        return null;
-                    }
-
-                }));
-            return tasks.Where(wallet => wallet is not null);
-        });
-
+        
+        var configuredStores =
+            await _storeRepository.GetSettingsAsync<WabisabiStoreSettings>(nameof(WabisabiStoreSettings));
+        return (await Task.WhenAll(configuredStores.Where(pair => pair.Value?.Settings
+                .Any(settings => settings.Coordinator == CoordinatorName && settings.Enabled) is true)
+            .Select(pair => GetWalletAsync(pair.Key, pair.Value)))).Where(wallet => wallet is not null);
     }
 
     public async Task UnlockUTXOs()
@@ -92,6 +115,23 @@ public class WalletProvider: IWalletProvider
         foreach (BTCPayWallet wallet in wallets)
         {
             await wallet.UnlockUTXOs();
+        }
+    }
+    
+    
+    private void CoinOnPropertyChanged(object sender, PropertyChangedEventArgs e)
+    {
+        if (sender is SmartCoin smartCoin && e.PropertyName == nameof(SmartCoin.CoinJoinInProgress))
+        {
+            var _logger = _loggerFactory.CreateLogger("");
+            _logger.LogInformation($"{smartCoin.Outpoint}.CoinJoinInProgress = {smartCoin.CoinJoinInProgress}");
+            _ = (smartCoin.CoinJoinInProgress
+                ? UtxoLocker.TryLock(smartCoin.Outpoint)
+                : UtxoLocker.TryUnlock(smartCoin.Outpoint)).ContinueWith(task =>
+            {
+                _logger.LogInformation(
+                    $"{(task.Result ? "Success" : "Fail")}: {(smartCoin.CoinJoinInProgress ? "" : "un")}locking coin for coinjoin: {smartCoin.Outpoint} ");
+            });
         }
     }
 }

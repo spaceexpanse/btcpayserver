@@ -15,6 +15,7 @@ public class BTCPayKeyChain: BaseKeyChain
     private readonly ExtKey _masterKey;
     private readonly ExtKey _accountKey;
 
+    public bool KeysAvailable => _masterKey is not null && _accountKey is not null;
     public BTCPayKeyChain(ExplorerClient explorerClient, DerivationStrategyBase derivationStrategy, ExtKey masterKey, ExtKey accountKey) : base(new Kitchen())
     {
         _explorerClient = explorerClient;

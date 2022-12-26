@@ -47,7 +47,8 @@ namespace BTCPayServer.Plugins.Wabisabi
         {
             
             await _storeRepository.UpdateSetting(storeId, nameof(WabisabiStoreSettings), wabisabiSettings);
-            _memoryCache.Remove("Wabisabi_WalletProvider");
+            _memoryCache.Remove($"Wabisabi_WalletProvider_{storeId}");
+            _memoryCache.Remove($"Wabisabi_Smartifier_{storeId}");
         }
     }
 }

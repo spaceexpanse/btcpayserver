@@ -29,6 +29,8 @@ namespace BTCPayServer.PluginPacker
             var outputDir = Path.Combine(args[2], name);
             var outputFile = Path.Combine(outputDir, name);
             var rootDLLPath = Path.Combine(directory, name + ".dll");
+
+            rootDLLPath = Path.GetFullPath(rootDLLPath);
             if (!File.Exists(rootDLLPath))
             {
                 throw new Exception($"{rootDLLPath} could not be found");

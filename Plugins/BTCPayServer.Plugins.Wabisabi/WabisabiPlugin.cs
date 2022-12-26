@@ -41,12 +41,12 @@ public class WabisabiPlugin : BaseBTCPayServerPlugin
                 .NBitcoinNetwork.ChainName;
             if (chain == ChainName.Mainnet)
             {
-                return new Uri("http://wasabiukrxmkdgve5kynjztuovbg43uxcbcxn6y2okcrsg7gb6jdmbad.onion/");
+                return new Uri("https://wasabiwallet.io/");
             }
 
             if (chain == ChainName.Testnet)
             {
-                return new Uri("http://testwnp3fugjln6vh5vpj7mvq3lkqqwjj3c2aafyu7laxz42kgwh2rad.onion/");
+                return new Uri("https://wasabiwallet.co/");
             }
 
             return new Uri("http://localhost:37127");
@@ -55,7 +55,9 @@ public class WabisabiPlugin : BaseBTCPayServerPlugin
         applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("Wabisabi/StoreIntegrationWabisabiOption",
             "store-integrations-list"));
         applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("Wabisabi/WabisabiNav",
-            "store-integrations-nav"));
+            "store-integrations-nav"));       
+        applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("Wabisabi/WabisabiDashboard",
+            "dashboard-start"));
         Logger.SetMinimumLevel(LogLevel.Debug);
         Logger.SetModes(LogMode.Console, LogMode.Debug);
         base.Execute(applicationBuilder);

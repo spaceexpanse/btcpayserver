@@ -20,8 +20,8 @@ public class WabisabiStoreCoordinatorSettings
     public List<string> InputLabelsExcluded { get; set; } = new();
     public bool ConsolidationMode { get; set; } = false;
     public bool RedCoinIsolation { get; set; } = false;
-    public int? AnonScoreTarget { get; set; } = null;
+    public int AnonymitySetTarget { get; set; } = 5;
 
     public bool SelectiveCoinjoin => InputLabelsAllowed.Any() || InputLabelsExcluded.Any();
-
+    public bool BatchPayments { get; set; } = true;
 }
