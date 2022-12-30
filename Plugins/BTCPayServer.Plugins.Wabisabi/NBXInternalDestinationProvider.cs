@@ -9,6 +9,7 @@ using NBitcoin;
 using NBitcoin.Payment;
 using NBXplorer;
 using NBXplorer.DerivationStrategy;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using WalletWasabi.Extensions;
 using WalletWasabi.WabiSabi.Backend.Rounds;
@@ -66,6 +67,7 @@ public class NBXInternalDestinationProvider : IDestinationProvider
                }
                return new PendingPayment()
                {
+                   Identifier = data.Id,
                    Destination = destination,
                    Value =value,
                    PaymentStarted = PaymentStarted(_storeId, data.Id),
@@ -87,11 +89,15 @@ public class NBXInternalDestinationProvider : IDestinationProvider
         return tuple =>
             _client.MarkPayout(storeId, payoutId, new MarkPayoutRequest()
             {
-                State = PayoutState.Completed,
+                State = PayoutState.InProgress,
                 PaymentProof = JObject.FromObject(new WabisabiPaymentProof()
-                {
-                    Id = tuple.transactionId.ToString(),
-                    OutputIndex = tuple.outputIndex,
+                { 
+                    ProofType = "PayoutTransactionOnChainBlob",
+                    Candidates = new HashSet<uint256>()
+                    {
+                        tuple.transactionId
+                    },
+                    TransactionId = tuple.transactionId,
                     Link = ComputeTxUrl(mainnet, tuple.transactionId.ToString(), tuple.outputIndex.ToString())
                 })
             });
@@ -111,20 +117,35 @@ public class NBXInternalDestinationProvider : IDestinationProvider
             _client.MarkPayout(storeId, payoutId, new MarkPayoutRequest() {State = PayoutState.AwaitingPayment});
     }
 
-    private Action PaymentStarted(string storeId, string payoutId)
+    private Func<Task<bool>> PaymentStarted(string storeId, string payoutId)
     {
-        return () =>
-            _client.MarkPayout(storeId, payoutId, new MarkPayoutRequest() {State = PayoutState.InProgress, PaymentProof = JObject.FromObject(new WabisabiPaymentProof()
+        return async () =>
+        {
+            try
             {
-                
-            })});
+                await _client.MarkPayout(storeId, payoutId,
+                    new MarkPayoutRequest()
+                    {
+                        State = PayoutState.InProgress,
+                        PaymentProof = JObject.FromObject(new WabisabiPaymentProof())
+                    });
+                return true;
+            }
+            catch (Exception e)
+            {
+                return false;
+            }
+        };
     }
 
     public class WabisabiPaymentProof
     {
-        public string Type { get; set; } = "Wabisabi";
-        public string Id { get; set; }
+        [JsonProperty("proofType")]
+        public string ProofType { get; set; } = "Wabisabi";
+        [JsonConverter(typeof(NBitcoin.JsonConverters.UInt256JsonConverter))]
+        public uint256 TransactionId { get; set; }
+        [JsonProperty(ItemConverterType = typeof(NBitcoin.JsonConverters.UInt256JsonConverter), NullValueHandling = NullValueHandling.Ignore)]
+        public HashSet<uint256> Candidates { get; set; } = new HashSet<uint256>();
         public string Link { get; set; }
-        public int OutputIndex { get; set; }
     }
 }

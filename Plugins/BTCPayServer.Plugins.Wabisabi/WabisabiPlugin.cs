@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Threading.Tasks;
 using BTCPayServer.Abstractions.Contracts;
 using BTCPayServer.Abstractions.Models;
 using BTCPayServer.Abstractions.Services;
@@ -17,14 +18,13 @@ namespace BTCPayServer.Plugins.Wabisabi;
 
 public class WabisabiPlugin : BaseBTCPayServerPlugin
 {
-    private ILogger _logger;
     public override string Identifier => "BTCPayServer.Plugins.Wabisabi";
     public override string Name => "Wabisabi";
 
 
     public override IBTCPayServerPlugin.PluginDependency[] Dependencies { get; } =
     {
-        new() {Identifier = nameof(BTCPayServer), Condition = ">=1.6.3.0"}
+        new() {Identifier = nameof(BTCPayServer), Condition = ">=1.7.3.0"}
     };
 
     public override string Description =>
@@ -58,21 +58,23 @@ public class WabisabiPlugin : BaseBTCPayServerPlugin
             "store-integrations-nav"));       
         applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("Wabisabi/WabisabiDashboard",
             "dashboard-start"));
-        Logger.SetMinimumLevel(LogLevel.Debug);
-        Logger.SetModes(LogMode.Console, LogMode.Debug);
+        Logger.SetMinimumLevel(LogLevel.Info);
+        Logger.SetModes(LogMode.DotNetLoggers);
         base.Execute(applicationBuilder);
     }
 
-    // public override void Execute(IApplicationBuilder applicationBuilder, IServiceProvider applicationBuilderApplicationServices)
-    // {
-    //     Task.Run(async () =>
-    //     {
-    //         var walletProvider =
-    //             (WalletProvider)applicationBuilderApplicationServices.GetRequiredService<IWalletProvider>();
-    //         await walletProvider.UnlockUTXOs();
-    //     });
-    //     base.Execute(applicationBuilder, applicationBuilderApplicationServices);
-    // }
+    public override void Execute(IApplicationBuilder applicationBuilder, IServiceProvider applicationBuilderApplicationServices)
+    {
+        Task.Run(async () =>
+        {
+            var walletProvider =
+                (WalletProvider)applicationBuilderApplicationServices.GetRequiredService<IWalletProvider>();
+            await walletProvider.ResetWabisabiStuckPayouts();
+        });
+
+        Logger.DotnetLogger = applicationBuilderApplicationServices.GetService<ILogger<WabisabiPlugin>>();
+        base.Execute(applicationBuilder, applicationBuilderApplicationServices);
+    }
 
     private void AddCoordinator(IServiceCollection serviceCollection, string displayName, string name, Func<IServiceProvider, Uri> fetcher, IUTXOLocker utxoLocker)
     {

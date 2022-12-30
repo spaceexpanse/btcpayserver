@@ -681,7 +681,6 @@ namespace BTCPayServer.Controllers.Greenfield
 
             try
             {
-                Console.WriteLine($"CREATING OBJ: {storeId}, {request!.Type}, {request.Id}");
                 await _walletRepository.SetWalletObject(
                         new WalletObjectId(walletId, request!.Type, request.Id), request.Data);
                 return await GetOnChainWalletObject(storeId, cryptoCode, request!.Type, request.Id);
@@ -698,8 +697,6 @@ namespace BTCPayServer.Controllers.Greenfield
             string objectType, string objectId,
             [FromBody] AddOnChainWalletObjectLinkRequest request)
         {
-            
-            Console.WriteLine($"CREATING OBJLINK: {storeId},  {objectType}-{objectId} to {request!.Type}-{request.Id}");
             if (request?.Type is null)
                 ModelState.AddModelError(nameof(request.Type), "Type is required");
             if (request?.Id is null)

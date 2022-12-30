@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using BTCPayServer.Abstractions.Contracts;
+using BTCPayServer.Client.Models;
 using BTCPayServer.Common;
 using BTCPayServer.Payments.PayJoin;
 using Microsoft.Extensions.Caching.Memory;
@@ -124,14 +125,42 @@ public class WalletProvider: IWalletProvider
         if (sender is SmartCoin smartCoin && e.PropertyName == nameof(SmartCoin.CoinJoinInProgress))
         {
             var _logger = _loggerFactory.CreateLogger("");
-            _logger.LogInformation($"{smartCoin.Outpoint}.CoinJoinInProgress = {smartCoin.CoinJoinInProgress}");
+            // _logger.LogInformation($"{smartCoin.Outpoint}.CoinJoinInProgress = {smartCoin.CoinJoinInProgress}");
             _ = (smartCoin.CoinJoinInProgress
                 ? UtxoLocker.TryLock(smartCoin.Outpoint)
                 : UtxoLocker.TryUnlock(smartCoin.Outpoint)).ContinueWith(task =>
             {
-                _logger.LogInformation(
-                    $"{(task.Result ? "Success" : "Fail")}: {(smartCoin.CoinJoinInProgress ? "" : "un")}locking coin for coinjoin: {smartCoin.Outpoint} ");
+                // _logger.LogInformation(
+                //     $"{(task.Result ? "Success" : "Fail")}: {(smartCoin.CoinJoinInProgress ? "" : "un")}locking coin for coinjoin: {smartCoin.Outpoint} ");
             });
+        }
+    }
+
+    public async Task ResetWabisabiStuckPayouts()
+    {
+        var wallets = await GetWalletsAsync();
+        foreach (BTCPayWallet wallet in wallets)
+        {
+           var client = await  _btcPayServerClientFactory.Create(null, wallet.StoreId);
+           var payouts = await client.GetStorePayouts(wallet.StoreId);
+           var inProgressPayouts = payouts.Where(data =>
+               data.State == PayoutState.InProgress && data.PaymentMethod == "BTC" &&
+               data.PaymentProof?.Value<string>("proofType") == "Wabisabi");
+           foreach (PayoutData payout in inProgressPayouts)
+           {
+               try
+               {
+                   var paymentproof =
+                       payout.PaymentProof.ToObject<NBXInternalDestinationProvider.WabisabiPaymentProof>();
+                   if(paymentproof.Candidates?.Any() is not true)
+                    await client.MarkPayout(wallet.StoreId, payout.Id,
+                       new MarkPayoutRequest() {State = PayoutState.AwaitingPayment});
+
+               }
+               catch (Exception e)
+               {
+               }
+           }
         }
     }
 }

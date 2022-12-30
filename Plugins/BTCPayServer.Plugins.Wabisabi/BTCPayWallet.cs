@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -77,7 +78,7 @@ public class BTCPayWallet : IWallet
 
     public async Task<bool> IsWalletPrivateAsync()
     {
-      return await GetPrivacyPercentageAsync()>= 1;
+      return !BatchPayments && await GetPrivacyPercentageAsync()>= 1;
     }
 
     public async Task<double> GetPrivacyPercentageAsync()
@@ -87,6 +88,7 @@ public class BTCPayWallet : IWallet
 
     public async Task<CoinsView> GetAllCoins()
     {
+        await _savingProgress;
         var client = await _btcPayServerClientFactory.Create(null, StoreId);
         var utxos = await client.GetOnChainWalletUTXOs(StoreId, "BTC");
         await _smartifier.LoadCoins(utxos.ToList());
@@ -120,6 +122,13 @@ public class BTCPayWallet : IWallet
 
     public async Task<IEnumerable<SmartCoin>> GetCoinjoinCoinCandidatesAsync()
     {
+        try
+        {
+            await _savingProgress;
+        }
+        catch (Exception e)
+        {
+        }
         try
         {
             if (IsUnderPlebStop)
@@ -193,11 +202,19 @@ public class BTCPayWallet : IWallet
         public CoinjoinDataCoin[] CoinsOut { get; set; }= Array.Empty<CoinjoinDataCoin>();
     }
 
+    private Task _savingProgress = Task.CompletedTask;
 
     public async Task RegisterCoinjoinTransaction(CoinJoinResult result)
     {
+        _savingProgress = RegisterCoinjoinTransactionInternal(result);
+        await _savingProgress;
+    }
+    private async Task RegisterCoinjoinTransactionInternal(CoinJoinResult result)
+    {
         try
         {
+            var stopwatch = Stopwatch.StartNew();
+            _logger.LogInformation($"Registering coinjoin result for {StoreId}");
             
             var client = await _btcPayServerClientFactory.Create(null, StoreId);
             var kp = await _explorerClient.GetMetadataAsync<RootedKeyPath>(_derivationScheme,
@@ -205,16 +222,20 @@ public class BTCPayWallet : IWallet
             
             //mark the tx as a coinjoin at a specific coordinator
             var txObject = new AddOnChainWalletObjectRequest() {Id = result.Transaction.GetHash().ToString(), Type = "tx"};
+
             var labels = new[]
             {
                 new AddOnChainWalletObjectRequest() {Id = "coinjoin", Type = "label"},
                 new AddOnChainWalletObjectRequest() {Id = CoordinatorName, Type = "label"},
-                
+                new AddOnChainWalletObjectRequest("label", "payout")
             };
 
+
+            var payoutLabels = result.HandledPayments.Select(pair =>
+                new AddOnChainWalletObjectRequest() {Id = pair.Value.Identifier, Type = "payout"});
             await client.AddOrUpdateOnChainWalletObject(StoreId, "BTC", txObject);
             
-            foreach (var label in labels)
+            foreach (var label in labels.Concat(payoutLabels))
             {
                 await client.AddOrUpdateOnChainWalletObject(StoreId, "BTC", label);
                 await client.AddOrUpdateOnChainWalletLink(StoreId, "BTC", txObject, new AddOnChainWalletObjectLinkRequest()
@@ -225,10 +246,14 @@ public class BTCPayWallet : IWallet
             }
 
             List<(IndexedTxOut txout, Task<KeyPathInformation>)> scriptInfos = new();
-            await client.AddOrUpdateOnChainWalletObject(StoreId, "BTC", new AddOnChainWalletObjectRequest("label", "coinjoin-std-denom"));
-            await client.AddOrUpdateOnChainWalletObject(StoreId, "BTC", new AddOnChainWalletObjectRequest("label", "coinjoin-change"));
-            await client.AddOrUpdateOnChainWalletObject(StoreId, "BTC", new AddOnChainWalletObjectRequest("label", "coinjoin-payment"));
-
+            foreach (var label in payoutLabels)
+            {
+                await client.AddOrUpdateOnChainWalletLink(StoreId, "BTC", label, new AddOnChainWalletObjectLinkRequest()
+                {
+                    Id = "payout",
+                    Type = "label"
+                }, CancellationToken.None);
+            }
             foreach (var script in result.RegisteredOutputs)
             {
                 var txout = result.Transaction.Outputs.AsIndexedOutputs()
@@ -245,11 +270,9 @@ public class BTCPayWallet : IWallet
                 await client.AddOrUpdateOnChainWalletObject(StoreId, "BTC", utxoObject);
                 
                 //this was not a mix to self, but rather a payment
-                if (result.HandledPayments.Any(pair => pair.Key == txout.TxOut))
+                if (result.HandledPayments.Any(pair => pair.Key.ScriptPubKey == txout.TxOut.ScriptPubKey && pair.Key.Value == txout.TxOut.Value))
                 {
-                    var payment = result.HandledPayments.Single(pair => pair.Key.ScriptPubKey == script);
-                    await client.AddOrUpdateOnChainWalletLink(StoreId, "BTC", utxoObject, new AddOnChainWalletObjectLinkRequest("label", "coinjoin-payment"));
-                    continue;
+                   continue;
                 }
 
                 scriptInfos.Add((txout, _explorerClient.GetKeyInformationAsync(_derivationScheme, script)));
@@ -283,7 +306,7 @@ public class BTCPayWallet : IWallet
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine(e);
+                    _logger.LogError($"Failed to analyza anonsets of tx {smartTx.GetHash()}");
                 }
                 foreach (SmartCoin smartTxWalletOutput in smartTx.WalletOutputs)
                 {
@@ -302,20 +325,20 @@ public class BTCPayWallet : IWallet
 
                     }
                    
-                    if (BlockchainAnalyzer.StdDenoms.Contains(smartTxWalletOutput.TxOut.Value.Satoshi))
-                    {
-                    
-                        await client.AddOrUpdateOnChainWalletLink(StoreId, "BTC", utxoObject,
-                            new AddOnChainWalletObjectLinkRequest() {Id = "coinjoin-std-denom", Type = "label"},
-                            CancellationToken.None);
-                    }
-                    else
-                    {
-                   
-                        // await client.AddOrUpdateOnChainWalletLink(StoreId, "BTC", utxoObject,
-                        //     new AddOnChainWalletObjectLinkRequest() {Id = "coinjoin-change", Type = "label"},
-                        //     CancellationToken.None);
-                    }
+                    // if (BlockchainAnalyzer.StdDenoms.Contains(smartTxWalletOutput.TxOut.Value.Satoshi))
+                    // {
+                    //
+                    //     await client.AddOrUpdateOnChainWalletLink(StoreId, "BTC", utxoObject,
+                    //         new AddOnChainWalletObjectLinkRequest() {Id = "coinjoin-std-denom", Type = "label"},
+                    //         CancellationToken.None);
+                    // }
+                    // else
+                    // {
+                    //
+                    //     // await client.AddOrUpdateOnChainWalletLink(StoreId, "BTC", utxoObject,
+                    //     //     new AddOnChainWalletObjectLinkRequest() {Id = "coinjoin-change", Type = "label"},
+                    //     //     CancellationToken.None);
+                    // }
                 }
                 await client.AddOrUpdateOnChainWalletObject(StoreId, "BTC",
                     new AddOnChainWalletObjectRequest()
@@ -348,10 +371,14 @@ public class BTCPayWallet : IWallet
                 await client.AddOrUpdateOnChainWalletLink(StoreId, "BTC", txObject,
                     new AddOnChainWalletObjectLinkRequest() {Id = result.RoundId.ToString(), Type = "coinjoin"},
                     CancellationToken.None);
+                stopwatch.Stop();
+                
+                _logger.LogInformation($"Registered coinjoin result for {StoreId} in {stopwatch.Elapsed}");
 
         }
         catch (Exception e)
         {
+            _logger.LogError(e, "Could not save coinjoin progress!");
             // ignored
         }
     }

@@ -351,7 +351,6 @@ namespace BTCPayServer.Services
         public async Task EnsureWalletObjectLink(WalletObjectId a, WalletObjectId b, JObject? data = null)
         {
             SortWalletObjectLinks(ref a, ref b);
-            Console.WriteLine($"ADD LINK: {a.Id}-{a.Type}  to {b.Id}-{b.Type}");
             await using var ctx = _ContextFactory.CreateContext();
             var l = new WalletObjectLinkData()
             {

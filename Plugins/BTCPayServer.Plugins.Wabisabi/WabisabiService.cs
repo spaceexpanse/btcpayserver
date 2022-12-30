@@ -45,7 +45,16 @@ namespace BTCPayServer.Plugins.Wabisabi
 
         public async Task SetWabisabiForStore(string storeId, WabisabiStoreSettings wabisabiSettings)
         {
-            
+            foreach (var setting in wabisabiSettings.Settings)
+            {
+                if (!setting.Enabled)
+                {
+                    var coordinator = _wabisabiCoordinatorManagers
+                            .FirstOrDefault(manager => manager.CoordinatorName == setting.Coordinator) as
+                        WabisabiCoordinatorManager;
+                    coordinator?.StopWallet(storeId);
+                }
+            }
             await _storeRepository.UpdateSetting(storeId, nameof(WabisabiStoreSettings), wabisabiSettings);
             _memoryCache.Remove($"Wabisabi_WalletProvider_{storeId}");
             _memoryCache.Remove($"Wabisabi_Smartifier_{storeId}");

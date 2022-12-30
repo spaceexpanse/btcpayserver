@@ -9,12 +9,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using WalletWasabi.Tor.Socks5.Pool.Circuits;
 using WalletWasabi.Userfacing;
-using WalletWasabi.WabiSabi.Backend.Rounds;
 using WalletWasabi.WabiSabi.Client;
-using WalletWasabi.WabiSabi.Client.CoinJoinProgressEvents;
 using WalletWasabi.WabiSabi.Client.RoundStateAwaiters;
 using WalletWasabi.WabiSabi.Client.StatusChangedEvents;
-using WalletWasabi.WabiSabi.Models.MultipartyTransaction;
 using WalletWasabi.WebClients.Wasabi;
 
 namespace BTCPayServer.Plugins.Wabisabi;
@@ -64,6 +61,11 @@ public class WabisabiCoordinatorManager : IWabisabiCoordinatorManager
         
     }
 
+    public async Task StopWallet(string walletName)
+    {
+        await CoinJoinManager.StopAsyncByName(walletName, CancellationToken.None);
+    }
+
     private void OnStatusChanged(object sender, StatusChangedEventArgs e)
     {
         
@@ -91,7 +93,7 @@ public class WabisabiCoordinatorManager : IWabisabiCoordinatorManager
                 {
                     Task.Run(async () =>
                     {
-                        _logger.LogInformation("unlocking coins because round failed");
+                        // _logger.LogInformation("unlocking coins because round failed");
                         await _utxoLocker.TryUnlock(
                             result.RegisteredCoins.Select(coin => coin.Outpoint).ToArray());
                     });
@@ -101,9 +103,9 @@ public class WabisabiCoordinatorManager : IWabisabiCoordinatorManager
                                        e.Wallet.WalletName);
                 break;
             case LoadedEventArgs loadedEventArgs:
-                var stopWhenAllMixed = (loadedEventArgs.Wallet as BTCPayWallet)?.BatchPayments is false;
-                _ = CoinJoinManager.StartAsync(loadedEventArgs.Wallet, stopWhenAllMixed, false, CancellationToken.None);
-                _logger.LogInformation( "Loaded wallet  :" + e.Wallet.WalletName);
+                var stopWhenAllMixed = !((BTCPayWallet)loadedEventArgs.Wallet).BatchPayments;
+               _ = CoinJoinManager.StartAsync(loadedEventArgs.Wallet, stopWhenAllMixed, false, CancellationToken.None);
+                _logger.LogInformation( "Loaded wallet  :" + e.Wallet.WalletName + $"stopWhenAllMixed: {stopWhenAllMixed}");
                 break;
             case StartErrorEventArgs errorArgs:
                 _logger.LogInformation("Could not start wallet for coinjoin:" + errorArgs.Error.ToString() + "   :" + e.Wallet.WalletName);
