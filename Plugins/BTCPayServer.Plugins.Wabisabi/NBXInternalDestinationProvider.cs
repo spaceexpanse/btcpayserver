@@ -23,21 +23,45 @@ public class NBXInternalDestinationProvider : IDestinationProvider
     private readonly DerivationStrategyBase _derivationStrategy;
     private readonly BTCPayServerClient _client;
     private readonly string _storeId;
+    private readonly WabisabiStoreSettings _wabisabiStoreSettings;
 
     public NBXInternalDestinationProvider(ExplorerClient explorerClient, 
-        DerivationStrategyBase derivationStrategy, BTCPayServerClient client, string storeId)
+        DerivationStrategyBase derivationStrategy, BTCPayServerClient client, string storeId, WabisabiStoreSettings wabisabiStoreSettings)
     {
         _explorerClient = explorerClient;
         _derivationStrategy = derivationStrategy;
         _client = client;
         _storeId = storeId;
+        _wabisabiStoreSettings = wabisabiStoreSettings;
     }
 
-    public async Task<IEnumerable<IDestination>> GetNextDestinationsAsync(int count, bool preferTaproot)
+    public async Task<IEnumerable<IDestination>> GetNextDestinationsAsync(int count, bool preferTaproot, bool mixedOutputs)
     {
-      return  await  Task.WhenAll(Enumerable.Repeat(0, count).Select(_ =>
+        if (!string.IsNullOrEmpty(_wabisabiStoreSettings.MixToOtherWallet) && mixedOutputs)
+        {
+            try
+            {
+                var pm = await _client.GetStoreOnChainPaymentMethod(_wabisabiStoreSettings.MixToOtherWallet,
+                    "BTC");
+                
+               var deriv =   _explorerClient.Network.DerivationStrategyFactory.Parse(pm.DerivationScheme);
+               if (deriv.ScriptPubKeyType() == _derivationStrategy.ScriptPubKeyType())
+               {
+                   
+                   return  await  Task.WhenAll(Enumerable.Repeat(0, count).Select(_ =>
+                       _explorerClient.GetUnusedAsync(deriv, DerivationFeature.Deposit, 0, true))).ContinueWith(task => task.Result.Select(information => information.Address));
+               }
+            }
+            
+            catch (Exception e)
+            {
+                _wabisabiStoreSettings.MixToOtherWallet = null;
+            }
+        }
+        return  await  Task.WhenAll(Enumerable.Repeat(0, count).Select(_ =>
             _explorerClient.GetUnusedAsync(_derivationStrategy, DerivationFeature.Deposit, 0, true))).ContinueWith(task => task.Result.Select(information => information.Address));
     }
+
     public async Task<IEnumerable<PendingPayment>> GetPendingPaymentsAsync( UtxoSelectionParameters roundParameters)
     {
         try

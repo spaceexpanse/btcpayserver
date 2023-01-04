@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using BTCPayServer.Abstractions.Constants;
 using BTCPayServer.Client;
@@ -14,10 +15,12 @@ namespace BTCPayServer.Plugins.Wabisabi
     public class WabisabiController : Controller
     {
         private readonly WabisabiService _WabisabiService;
+        private readonly WalletProvider _walletProvider;
 
-        public WabisabiController(WabisabiService WabisabiService)
+        public WabisabiController(WabisabiService WabisabiService,WalletProvider walletProvider)
         {
             _WabisabiService = WabisabiService;
+            _walletProvider = walletProvider;
         }
 
         [HttpGet("")]
@@ -43,32 +46,36 @@ namespace BTCPayServer.Plugins.Wabisabi
         {
             var pieces = command.Split(":");
             var actualCommand = pieces[0];
-            var coordinator = pieces.Length > 1 ? pieces[1] : null;
-            var commandIndex = pieces.Length > 2 ? pieces[2] : null;
+            var commandIndex = pieces.Length > 1 ? pieces[1] : null;
+            var coordinator = pieces.Length > 2 ? pieces[2] : null;
             var coord = vm.Settings.SingleOrDefault(settings => settings.Coordinator == coordinator);
             ModelState.Clear();
 
             switch (actualCommand)
             {
+                case "check":
+                    await _walletProvider.Check(storeId, CancellationToken.None);
+                    TempData["SuccessMessage"] = "Store wallet re-checked";
+                    return RedirectToAction(nameof(UpdateWabisabiStoreSettings), new {storeId});
                 case "exclude-label-add":
-                    coord.InputLabelsExcluded.Add("");
+                    vm.InputLabelsExcluded.Add("");
                     return View(vm);
 
                 case "exclude-label-remove":
-                    coord.InputLabelsExcluded.Remove(commandIndex);
+                    vm.InputLabelsExcluded.Remove(commandIndex);
                     return View(vm);
                 case "include-label-add":
-                    coord.InputLabelsAllowed.Add("");
+                    vm.InputLabelsAllowed.Add("");
                     return View(vm);
                 case "include-label-remove":
-                    coord.InputLabelsAllowed.Remove(commandIndex);
+                    vm.InputLabelsAllowed.Remove(commandIndex);
                     return View(vm);
 
                 case "save":
                     foreach (WabisabiStoreCoordinatorSettings settings in vm.Settings)
                     {
-                        settings.InputLabelsAllowed = settings.InputLabelsAllowed.Where(s => !string.IsNullOrEmpty(s)).Distinct().ToList();
-                        settings.InputLabelsExcluded = settings.InputLabelsExcluded.Where(s => !string.IsNullOrEmpty(s)).Distinct().ToList();
+                        vm.InputLabelsAllowed = vm.InputLabelsAllowed.Where(s => !string.IsNullOrEmpty(s)).Distinct().ToList();
+                        vm.InputLabelsExcluded = vm.InputLabelsExcluded.Where(s => !string.IsNullOrEmpty(s)).Distinct().ToList();
                     } 
                     await _WabisabiService.SetWabisabiForStore(storeId, vm);
                     TempData["SuccessMessage"] = "Wabisabi settings modified";

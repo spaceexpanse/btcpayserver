@@ -126,7 +126,7 @@ services:
 
   bitcoind:
     restart: unless-stopped
-    image: btcpayserver/bitcoinknots:21.2
+    image: btcpayserver/bitcoinknots:23.0-2
     environment:
       BITCOIN_NETWORK: regtest
       BITCOIN_WALLETDIR: "/data/wallets"

@@ -34,10 +34,6 @@ public class BTCPayCoinjoinCoinSelector : IRoundCoinSelector
     {
         coinCandidates = coinCandidates.Where(coin =>
         {
-            if (coin.IsBanned)
-            {
-                return false;
-            }
 
             var effV = coin.EffectiveValue(utxoSelectionParameters.MiningFeeRate,
                 utxoSelectionParameters.CoordinationFeeRate);
@@ -211,7 +207,7 @@ public class BTCPayCoinjoinCoinSelector : IRoundCoinSelector
                 var maxCoinCapacityPercentage = Math.Floor((solution.Coins.Count / (decimal)maxCoins) * 100);
                 //aggressively attempt to reach max coin target if consolidation mode is on
                 var chance = consolidationMode ? 90 : 100 - maxCoinCapacityPercentage;
-                _logger.LogInformation(
+                _logger.LogDebug(
                     $"coin selection: no payms left but at {solution.Coins.Count()} coins. random chance to add another coin if: {chance} <= {rand} (random 0-100) ");
                 if (chance <= rand)
                 {

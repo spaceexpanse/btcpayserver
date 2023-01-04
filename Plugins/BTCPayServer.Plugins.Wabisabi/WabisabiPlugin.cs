@@ -52,6 +52,15 @@ public class WabisabiPlugin : BaseBTCPayServerPlugin
             return new Uri("http://localhost:37127");
         },utxoLocker);
         applicationBuilder.AddSingleton<WabisabiService>();
+        applicationBuilder.AddSingleton<WalletProvider>( provider => new(
+            provider.GetRequiredService<IStoreRepository>(),
+            provider.GetRequiredService<IBTCPayServerClientFactory>(),
+            provider.GetRequiredService<IExplorerClientProvider>(),
+            provider.GetRequiredService<ILoggerFactory>(),
+            utxoLocker
+        ));
+        applicationBuilder.AddSingleton<IWalletProvider>(provider => provider.GetRequiredService<WalletProvider>());
+        applicationBuilder.AddHostedService(provider => provider.GetRequiredService<WalletProvider>());;
         applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("Wabisabi/StoreIntegrationWabisabiOption",
             "store-integrations-list"));
         applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("Wabisabi/WabisabiNav",
@@ -76,10 +85,12 @@ public class WabisabiPlugin : BaseBTCPayServerPlugin
         base.Execute(applicationBuilder, applicationBuilderApplicationServices);
     }
 
-    private void AddCoordinator(IServiceCollection serviceCollection, string displayName, string name, Func<IServiceProvider, Uri> fetcher, IUTXOLocker utxoLocker)
+    private void AddCoordinator(IServiceCollection serviceCollection, string displayName, string name,
+        Func<IServiceProvider, Uri> fetcher, IUTXOLocker utxoLocker)
     {
         serviceCollection.AddSingleton<IWabisabiCoordinatorManager>(provider => new WabisabiCoordinatorManager(
-            displayName, name, fetcher.Invoke(provider), provider.GetService<ILoggerFactory>(), provider, utxoLocker));
+            displayName,
+            name, fetcher.Invoke(provider), provider.GetService<ILoggerFactory>(), provider, utxoLocker, provider.GetService<WalletProvider>()));
 
         serviceCollection.AddHostedService(s =>
             s.GetServices<IWabisabiCoordinatorManager>().Single(manager => manager.CoordinatorName == name));

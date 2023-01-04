@@ -8,12 +8,8 @@ public class WabisabiStoreSettings
     public List<WabisabiStoreCoordinatorSettings> Settings { get; set; } = new();
 
 
-}
-
-public class WabisabiStoreCoordinatorSettings
-{
-    public string Coordinator { get; set; }
-    public bool Enabled { get; set; } = false;
+    public string MixToOtherWallet { get; set; }
+    
     public bool PlebMode { get; set; } = true;
     
     public List<string> InputLabelsAllowed { get; set; } = new();
@@ -22,6 +18,15 @@ public class WabisabiStoreCoordinatorSettings
     public bool RedCoinIsolation { get; set; } = false;
     public int AnonymitySetTarget { get; set; } = 5;
 
-    public bool SelectiveCoinjoin => InputLabelsAllowed.Any() || InputLabelsExcluded.Any();
     public bool BatchPayments { get; set; } = true;
+
+
+}
+
+public class WabisabiStoreCoordinatorSettings
+{
+    public string Coordinator { get; set; }
+    public bool Enabled { get; set; } = false;
+
+    
 }

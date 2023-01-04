@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using BTCPayServer.Abstractions.Contracts;
 using BTCPayServer.Client;
 using Microsoft.Extensions.Caching.Memory;
+using WalletWasabi.WabiSabi.Client;
 
 namespace BTCPayServer.Plugins.Wabisabi
 {
@@ -13,13 +14,18 @@ namespace BTCPayServer.Plugins.Wabisabi
         private readonly IStoreRepository _storeRepository;
         private readonly IMemoryCache _memoryCache;
         private readonly IEnumerable<IWabisabiCoordinatorManager> _wabisabiCoordinatorManagers;
+        private readonly WalletProvider _walletProvider;
         private readonly string[] _ids;
 
-        public WabisabiService( IStoreRepository storeRepository, IMemoryCache memoryCache, IEnumerable<IWabisabiCoordinatorManager> wabisabiCoordinatorManagers)
+        public WabisabiService( IStoreRepository storeRepository, 
+            IMemoryCache memoryCache, 
+            IEnumerable<IWabisabiCoordinatorManager> wabisabiCoordinatorManagers,
+            WalletProvider walletProvider)
         {
             _storeRepository = storeRepository;
             _memoryCache = memoryCache;
             _wabisabiCoordinatorManagers = wabisabiCoordinatorManagers;
+            _walletProvider = walletProvider;
             _ids = wabisabiCoordinatorManagers.Select(manager => manager.CoordinatorName).ToArray();
         }
         
@@ -45,19 +51,29 @@ namespace BTCPayServer.Plugins.Wabisabi
 
         public async Task SetWabisabiForStore(string storeId, WabisabiStoreSettings wabisabiSettings)
         {
+            
             foreach (var setting in wabisabiSettings.Settings)
             {
-                if (!setting.Enabled)
-                {
-                    var coordinator = _wabisabiCoordinatorManagers
-                            .FirstOrDefault(manager => manager.CoordinatorName == setting.Coordinator) as
-                        WabisabiCoordinatorManager;
-                    coordinator?.StopWallet(storeId);
-                }
+                if (setting.Enabled) continue;
+                var coordinator = _wabisabiCoordinatorManagers
+                        .FirstOrDefault(manager => manager.CoordinatorName == setting.Coordinator) as
+                    WabisabiCoordinatorManager;
+                coordinator?.StopWallet(storeId);
             }
-            await _storeRepository.UpdateSetting(storeId, nameof(WabisabiStoreSettings), wabisabiSettings);
-            _memoryCache.Remove($"Wabisabi_WalletProvider_{storeId}");
-            _memoryCache.Remove($"Wabisabi_Smartifier_{storeId}");
+   
+            if (wabisabiSettings.Settings.All(settings => !settings.Enabled))
+            {
+                
+                await _storeRepository.UpdateSetting<WabisabiStoreSettings>(storeId, nameof(WabisabiStoreSettings), null!);
+            }
+            else
+            {
+                await _storeRepository.UpdateSetting<WabisabiStoreSettings>(storeId, nameof(WabisabiStoreSettings), wabisabiSettings!);
+            }
+            
+            await _walletProvider.SettingsUpdated(storeId, wabisabiSettings);
+         
         }
     }
+    
 }
