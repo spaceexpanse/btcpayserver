@@ -37,7 +37,7 @@ public class NBXInternalDestinationProvider : IDestinationProvider
 
     public async Task<IEnumerable<IDestination>> GetNextDestinationsAsync(int count, bool preferTaproot, bool mixedOutputs)
     {
-        if (!string.IsNullOrEmpty(_wabisabiStoreSettings.MixToOtherWallet) && mixedOutputs)
+        if (!_wabisabiStoreSettings.PlebMode && !string.IsNullOrEmpty(_wabisabiStoreSettings.MixToOtherWallet) && mixedOutputs)
         {
             try
             {

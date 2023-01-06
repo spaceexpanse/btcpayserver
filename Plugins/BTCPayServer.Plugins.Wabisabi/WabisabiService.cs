@@ -12,21 +12,17 @@ namespace BTCPayServer.Plugins.Wabisabi
     public class WabisabiService
     {
         private readonly IStoreRepository _storeRepository;
-        private readonly IMemoryCache _memoryCache;
-        private readonly IEnumerable<IWabisabiCoordinatorManager> _wabisabiCoordinatorManagers;
+        private readonly WabisabiCoordinatorClientInstanceManager _coordinatorClientInstanceManager;
         private readonly WalletProvider _walletProvider;
-        private readonly string[] _ids;
+        private string[] _ids => _coordinatorClientInstanceManager.HostedServices.Keys.ToArray();
 
         public WabisabiService( IStoreRepository storeRepository, 
-            IMemoryCache memoryCache, 
-            IEnumerable<IWabisabiCoordinatorManager> wabisabiCoordinatorManagers,
+            WabisabiCoordinatorClientInstanceManager coordinatorClientInstanceManager,
             WalletProvider walletProvider)
         {
             _storeRepository = storeRepository;
-            _memoryCache = memoryCache;
-            _wabisabiCoordinatorManagers = wabisabiCoordinatorManagers;
+            _coordinatorClientInstanceManager = coordinatorClientInstanceManager;
             _walletProvider = walletProvider;
-            _ids = wabisabiCoordinatorManagers.Select(manager => manager.CoordinatorName).ToArray();
         }
         
         public async Task<WabisabiStoreSettings> GetWabisabiForStore(string storeId)
@@ -35,13 +31,13 @@ namespace BTCPayServer.Plugins.Wabisabi
             var res = await  _storeRepository.GetSettingAsync<WabisabiStoreSettings>(storeId, nameof(WabisabiStoreSettings));
             res ??= new WabisabiStoreSettings();
             res.Settings = res.Settings.Where(settings => _ids.Contains(settings.Coordinator)).ToList();
-            foreach (var wabisabiCoordinatorManager in _wabisabiCoordinatorManagers)
+            foreach (var wabisabiCoordinatorManager in _coordinatorClientInstanceManager.HostedServices)
             {
-                if (res.Settings.All(settings => settings.Coordinator != wabisabiCoordinatorManager.CoordinatorName))
+                if (res.Settings.All(settings => settings.Coordinator != wabisabiCoordinatorManager.Key))
                 {
                     res.Settings.Add(new WabisabiStoreCoordinatorSettings()
                     {
-                        Coordinator = wabisabiCoordinatorManager.CoordinatorName,
+                        Coordinator = wabisabiCoordinatorManager.Key,
                     });
                 }
             }
@@ -55,10 +51,8 @@ namespace BTCPayServer.Plugins.Wabisabi
             foreach (var setting in wabisabiSettings.Settings)
             {
                 if (setting.Enabled) continue;
-                var coordinator = _wabisabiCoordinatorManagers
-                        .FirstOrDefault(manager => manager.CoordinatorName == setting.Coordinator) as
-                    WabisabiCoordinatorManager;
-                coordinator?.StopWallet(storeId);
+                if(_coordinatorClientInstanceManager.HostedServices.TryGetValue(setting.Coordinator, out var coordinator))
+                    _ = coordinator.StopWallet(storeId);
             }
    
             if (wabisabiSettings.Settings.All(settings => !settings.Enabled))

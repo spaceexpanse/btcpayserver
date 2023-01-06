@@ -78,7 +78,7 @@ public class BTCPayWallet : IWallet
     public bool ConsolidationMode => !WabisabiStoreSettings.PlebMode && WabisabiStoreSettings.ConsolidationMode;
     public TimeSpan FeeRateMedianTimeFrame { get; } = TimeSpan.FromHours(KeyManager.DefaultFeeRateMedianTimeFrameHours);
     public bool RedCoinIsolation => !WabisabiStoreSettings.PlebMode &&WabisabiStoreSettings.RedCoinIsolation;
-    public bool BatchPayments => WabisabiStoreSettings.BatchPayments;
+    public bool BatchPayments => WabisabiStoreSettings.PlebMode || WabisabiStoreSettings.BatchPayments;
 
     public async Task<bool> IsWalletPrivateAsync()
     {
@@ -231,7 +231,7 @@ public class BTCPayWallet : IWallet
             var stopwatch = Stopwatch.StartNew();
             Logger.LogInformation($"Registering coinjoin result for {StoreId}");
             
-            var storeIdForutxo =
+            var storeIdForutxo = WabisabiStoreSettings.PlebMode ||
                 string.IsNullOrEmpty(WabisabiStoreSettings.MixToOtherWallet)? StoreId: WabisabiStoreSettings.MixToOtherWallet;
             var client = await BtcPayServerClientFactory.Create(null, StoreId, storeIdForutxo);
             var kp = await ExplorerClient.GetMetadataAsync<RootedKeyPath>(DerivationScheme,

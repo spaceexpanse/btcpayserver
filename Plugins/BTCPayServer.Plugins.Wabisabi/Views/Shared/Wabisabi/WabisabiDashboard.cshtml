@@ -12,7 +12,7 @@
 @inject BTCPayServerClient Client
 @inject WabisabiService WabisabiService;
 @inject WalletProvider WalletProvider;
-@inject IEnumerable<IWabisabiCoordinatorManager> _coordinatorManagers
+@inject WabisabiCoordinatorClientInstanceManager WabisabiCoordinatorClientInstanceManager
 @inject ContentSecurityPolicies contentSecurityPolicies
 @inject IExplorerClientProvider ExplorerClientProvider
 
@@ -404,8 +404,8 @@
                 @{
                     foreach (var setting in enabledSettings)
                     {
-                        var coordinator = (WabisabiCoordinatorManager) _coordinatorManagers.SingleOrDefault(manager => manager.CoordinatorName == setting.Coordinator);
-                        if (coordinator is null)
+                       
+                        if (! WabisabiCoordinatorClientInstanceManager.HostedServices.TryGetValue(setting.Coordinator, out var coordinator))
                         {
                             continue;
                         }

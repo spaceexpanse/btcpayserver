@@ -8,7 +8,7 @@
 @using BTCPayServer.Common
 @model BTCPayServer.Plugins.Wabisabi.WabisabiStoreSettings
 @inject ContentSecurityPolicies contentSecurityPolicies
-@inject IEnumerable<IWabisabiCoordinatorManager> _coordinatorManagers
+@inject WabisabiCoordinatorClientInstanceManager WabisabiCoordinatorClientInstanceManager
 @inject IScopeProvider _scopeProvider
 @inject IExplorerClientProvider ExplorerClientProvider;
 @inject IBTCPayServerClientFactory ClientFactory
@@ -34,6 +34,7 @@
     catch (Exception e)
     {
     }
+    Client = await ClientFactory.Create(userid);
     var stores = (await Client.GetStores())
         .Where(data => data.Id != storeId)
         .ToDictionary(s => s.Id, async s =>
@@ -56,11 +57,11 @@
     await Task.WhenAll(stores.Values);
     var selectStores =
         stores.Where(pair => pair.Value.Result is not null)
-            .Select(pair => new SelectListItem(pair.Value.Result, pair.Key, Model.MixToOtherWallet == pair.Key)).Prepend(new SelectListItem("None", null));
+            .Select(pair => new SelectListItem(pair.Value.Result, pair.Key, Model.MixToOtherWallet == pair.Key)).Prepend(new SelectListItem("None", ""));
 }
 
 
-<h2 class="mb-4">Wabisabi coinjoin support</h2>
+<h2 class="mb-4">Coinjoin configuration</h2>
 
 <form method="post">
     @{
@@ -193,8 +194,7 @@
         <input asp-for="Settings[index].Coordinator" type="hidden"/>
         var s = Model.Settings[index];
 
-        var coordinator = (WabisabiCoordinatorManager) _coordinatorManagers.SingleOrDefault(manager => manager.CoordinatorName == s.Coordinator);
-        if (coordinator is null)
+        if (! WabisabiCoordinatorClientInstanceManager.HostedServices.TryGetValue(s.Coordinator, out var coordinator))
         {
             continue;
         }

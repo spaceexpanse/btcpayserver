@@ -7,8 +7,10 @@ using System.Threading.Tasks;
 using BTCPayServer.Payments.PayJoin;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NBitcoin;
+using WalletWasabi.Services;
 using WalletWasabi.Tor.Socks5.Pool.Circuits;
 using WalletWasabi.Userfacing;
 using WalletWasabi.WabiSabi.Client;
@@ -18,7 +20,54 @@ using WalletWasabi.WebClients.Wasabi;
 
 namespace BTCPayServer.Plugins.Wabisabi;
 
-public class WabisabiCoordinatorManager : IWabisabiCoordinatorManager
+public class WabisabiCoordinatorClientInstanceManager:IHostedService
+{
+    private readonly IServiceProvider _provider;
+    public Dictionary<string, WabisabiCoordinatorClientInstance> HostedServices { get; set; } = new();
+    
+    public WabisabiCoordinatorClientInstanceManager(IServiceProvider provider)
+    {
+        _provider = provider;
+    }
+
+    private bool started = false;
+    public LocalisedUTXOLocker UTXOLocker;
+
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        started = true;
+        foreach (KeyValuePair<string,WabisabiCoordinatorClientInstance> coordinatorManager in HostedServices)
+        {
+            await coordinatorManager.Value.StartAsync(cancellationToken);
+        }
+    }
+
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        foreach (KeyValuePair<string,WabisabiCoordinatorClientInstance> coordinatorManager in HostedServices)
+        {
+            await coordinatorManager.Value.StopAsync(cancellationToken);
+        }
+    }
+    
+    
+
+    public  void AddCoordinator(string displayName, string name,
+        Func<IServiceProvider, Uri> fetcher)
+    {
+        var instance = new WabisabiCoordinatorClientInstance(
+            displayName,
+            name, fetcher.Invoke(_provider), _provider.GetService<ILoggerFactory>(), _provider, UTXOLocker,
+            _provider.GetService<WalletProvider>());
+        if (HostedServices.TryAdd(instance.CoordinatorName, instance))
+        {
+            if(started)
+                _ = instance.StartAsync(CancellationToken.None);
+        }
+    }
+}
+
+public class WabisabiCoordinatorClientInstance
 {
     private readonly IUTXOLocker _utxoLocker;
     private readonly ILogger _logger;
@@ -31,7 +80,7 @@ public class WabisabiCoordinatorManager : IWabisabiCoordinatorManager
     public WasabiCoordinatorStatusFetcher WasabiCoordinatorStatusFetcher { get; set; }
     public CoinJoinManager CoinJoinManager { get; set; }
 
-    public WabisabiCoordinatorManager(string coordinatorDisplayName,
+    public WabisabiCoordinatorClientInstance(string coordinatorDisplayName,
         string coordinatorName, 
         Uri coordinator, 
         ILoggerFactory loggerFactory, 
