@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BTCPayServer.Plugins.Wabisabi;
+using Microsoft.AspNetCore.Authorization;
 using WalletWasabi.Backend.Filters;
 using WalletWasabi.Cache;
 using WalletWasabi.WabiSabi.Backend.PostRequests;
@@ -17,6 +18,7 @@ namespace WalletWasabi.Backend.Controllers;
 [ExceptionTranslate]
 [LateResponseLoggerFilter]
 [WasabiSpecificJsonSerializerFilter]
+[AllowAnonymous]
 [UseWasabiJsonInputFormatter ]
 [Route("plugins/wabisabi-coordinator/wabisabi")]
 [Produces("application/json")]
