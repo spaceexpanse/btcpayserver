@@ -1,0 +1,3 @@
+[submodule "Wasabi"]
+	path = Wasabi
+	url = https://github.com/Kukks/WalletWasabi

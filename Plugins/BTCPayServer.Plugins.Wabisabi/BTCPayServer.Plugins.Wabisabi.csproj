@@ -30,6 +30,7 @@
     <ProjectReference Include="..\..\BTCPayServer.Abstractions\BTCPayServer.Abstractions.csproj" />
     <EmbeddedResource Include="Resources\**" />
     <ProjectReference Include="..\..\BTCPayServer.Common\BTCPayServer.Common.csproj" />
+    <ProjectReference Include="..\..\Wasabi\WalletWasabi\WalletWasabi.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Resources" />
