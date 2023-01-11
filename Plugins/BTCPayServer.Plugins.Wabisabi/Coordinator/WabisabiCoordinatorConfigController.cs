@@ -1,11 +1,14 @@
 using System;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using BTCPayServer.Abstractions.Constants;
 using BTCPayServer.Client;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NBitcoin.Secp256k1;
+using NNostr.Client;
 using WalletWasabi.Backend.Controllers;
 
 namespace BTCPayServer.Plugins.Wabisabi
@@ -45,6 +48,18 @@ namespace BTCPayServer.Plugins.Wabisabi
         {
             switch (command)
             {
+                case "generate-nostr-key":
+                    if (ECPrivKey.TryCreate(new ReadOnlySpan<byte>(RandomNumberGenerator.GetBytes(32)), out var key))
+                    {
+                        
+                        TempData["SuccessMessage"] = "Key generated";
+                        vm.NostrIdentity = key.ToHex();
+                        await _wabisabiCoordinatorService.UpdateSettings( vm);
+                        return RedirectToAction(nameof(UpdateWabisabiSettings));
+                    }
+                    
+                    ModelState.AddModelError("NostrIdentity", "key could not be generated");
+                    return View(vm);
                 case "save":
                     try
                     {

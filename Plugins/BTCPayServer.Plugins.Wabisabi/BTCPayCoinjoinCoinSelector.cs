@@ -32,15 +32,18 @@ public class BTCPayCoinjoinCoinSelector : IRoundCoinSelector
         UtxoSelectionParameters utxoSelectionParameters,
         Money liquidityClue, SecureRandom secureRandom)
     {
-        coinCandidates = coinCandidates.Where(coin =>
-        {
-
-            var effV = coin.EffectiveValue(utxoSelectionParameters.MiningFeeRate,
-                utxoSelectionParameters.CoordinationFeeRate);
-            var percentageLeft = (effV.ToDecimal(MoneyUnit.BTC) / coin.Amount.ToDecimal(MoneyUnit.BTC));
-            // filter out low value coins where 50% of the value would be eaten up by fees
-            return effV > 0 && percentageLeft >= 0.5m;
-        });
+        coinCandidates =
+            coinCandidates
+                .Where(coin => utxoSelectionParameters.AllowedInputScriptTypes.Contains(coin.ScriptType))
+                .Where(coin => utxoSelectionParameters.AllowedInputAmounts.Contains(coin.Amount))
+                .Where(coin =>
+                {
+                    var effV = coin.EffectiveValue(utxoSelectionParameters.MiningFeeRate,
+                        utxoSelectionParameters.CoordinationFeeRate);
+                    var percentageLeft = (effV.ToDecimal(MoneyUnit.BTC) / coin.Amount.ToDecimal(MoneyUnit.BTC));
+                    // filter out low value coins where 50% of the value would be eaten up by fees
+                    return effV > 0 && percentageLeft >= 0.5m;
+                });
         var payments =
             _wallet.BatchPayments
                 ? await _wallet.DestinationProvider.GetPendingPaymentsAsync(utxoSelectionParameters)

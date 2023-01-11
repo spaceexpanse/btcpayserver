@@ -50,9 +50,8 @@ public class WabisabiPlugin : BaseBTCPayServerPlugin
 
     public override void Execute(IServiceCollection applicationBuilder)
     {
-
         var utxoLocker = new LocalisedUTXOLocker();
-        applicationBuilder.AddSingleton<WabisabiCoordinatorClientInstanceManager>(
+        applicationBuilder.AddSingleton(
             provider =>
             {
                 var res = ActivatorUtilities.CreateInstance<WabisabiCoordinatorClientInstanceManager>(provider);
@@ -75,9 +74,10 @@ public class WabisabiPlugin : BaseBTCPayServerPlugin
                 });
                 return res;
             });
-        applicationBuilder.AddHostedService(provider=> provider.GetRequiredService<WabisabiCoordinatorClientInstanceManager>());
+        applicationBuilder.AddHostedService(provider =>
+            provider.GetRequiredService<WabisabiCoordinatorClientInstanceManager>());
         applicationBuilder.AddSingleton<WabisabiService>();
-        applicationBuilder.AddSingleton<WalletProvider>( provider => new(
+        applicationBuilder.AddSingleton<WalletProvider>(provider => new(
             provider.GetRequiredService<IStoreRepository>(),
             provider.GetRequiredService<IBTCPayServerClientFactory>(),
             provider.GetRequiredService<IExplorerClientProvider>(),
@@ -86,25 +86,25 @@ public class WabisabiPlugin : BaseBTCPayServerPlugin
         ));
         applicationBuilder.AddWabisabiCoordinator();
         applicationBuilder.AddSingleton<IWalletProvider>(provider => provider.GetRequiredService<WalletProvider>());
-        applicationBuilder.AddHostedService(provider => provider.GetRequiredService<WalletProvider>());;
+        applicationBuilder.AddHostedService(provider => provider.GetRequiredService<WalletProvider>());
+        ;
         applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("Wabisabi/StoreIntegrationWabisabiOption",
             "store-integrations-list"));
         applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("Wabisabi/WabisabiNav",
-            "store-integrations-nav"));       
+            "store-integrations-nav"));
         applicationBuilder.AddSingleton<IUIExtension>(new UIExtension("Wabisabi/WabisabiDashboard",
-            "dashboard-start"));
-        
+            "dashboard"));
+
         Logger.SetMinimumLevel(LogLevel.Info);
         Logger.SetModes(LogMode.DotNetLoggers);
-        
-        
+
+
         base.Execute(applicationBuilder);
     }
-    
-    
-    
 
-    public override void Execute(IApplicationBuilder applicationBuilder, IServiceProvider applicationBuilderApplicationServices)
+
+    public override void Execute(IApplicationBuilder applicationBuilder,
+        IServiceProvider applicationBuilderApplicationServices)
     {
         Task.Run(async () =>
         {
@@ -117,4 +117,3 @@ public class WabisabiPlugin : BaseBTCPayServerPlugin
         base.Execute(applicationBuilder, applicationBuilderApplicationServices);
     }
 }
-

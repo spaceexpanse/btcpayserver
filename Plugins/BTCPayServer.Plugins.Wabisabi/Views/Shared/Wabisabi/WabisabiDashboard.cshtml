@@ -18,7 +18,7 @@
 
 @{
     var available = true;
-    @if ((((object) Model) as dynamic).CryptoCode != "BTC" || (((object) Model) as dynamic).WalletEnabled is not true)
+    @if (((dynamic) Model).CryptoCode != "BTC" || ((dynamic) Model).WalletEnabled is not true)
     {
         return;
     }
@@ -81,14 +81,14 @@
             <div class="widget">
                 <header>
                     <h3>Coinjoin</h3>
-                    <a asp-controller="Wabisabi" asp-action="UpdateWabisabiStoreSettings" asp-route-storeId="@storeId" class="fw-semibold">
+                    <a asp-controller="WabisabiStore" asp-action="UpdateWabisabiStoreSettings" asp-route-storeId="@storeId" class="fw-semibold">
                         Manage
                     </a>
                 </header>
                 <p class="text-secondary my-3">
                     There are no configured coinjoin coordinators
                 </p>
-                <a asp-controller="Wabisabi" asp-action="UpdateWabisabiStoreSettings" asp-route-storeId="@storeId" class="fw-semibold">
+                <a asp-controller="WabisabiStore" asp-action="UpdateWabisabiStoreSettings" asp-route-storeId="@storeId" class="fw-semibold">
                     Configure coinjoin settings
                 </a>
             </div>
@@ -229,7 +229,7 @@
             }
             <header>
                 <h4>Coinjoin stats</h4>
-                <a asp-controller="Wabisabi" asp-action="UpdateWabisabiStoreSettings" asp-route-storeId="@storeId" class="fw-semibold">
+                <a asp-controller="WabisabiStore" asp-action="UpdateWabisabiStoreSettings" asp-route-storeId="@storeId" class="fw-semibold">
                     Configure coinjoin settings
                 </a>
 
@@ -411,18 +411,18 @@
                         }
                         <div class="list-group-item">
                             <h6>@coordinator.CoordinatorDisplayName</h6>
-                            <div class="d-flex text-break justify-content-between">
-                                <span class="text-muted">
+                            <div class="row ">
+                                <span class="text-muted col-sm-12 col-md-9 p-0 text-break">
                                     @coordinator.Coordinator
                                 </span>
 
                                 @if (!coordinator.WasabiCoordinatorStatusFetcher.Connected)
                                 {
-                                    <p class="text-danger mb-0">Not connected</p>
+                                    <p class="text-danger mb-0 col-sm-12 col-md-3 p-0 text-break">Not connected</p>
                                 }
                                 else
                                 {
-                                    <p class="text-success mb-0">Connected</p>
+                                    <p class="text-success mb-0 col-sm-12 col-md-3 p-0 text-break">Connected</p>
                                 }
                             </div>
                             @{

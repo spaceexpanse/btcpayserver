@@ -23,11 +23,20 @@ namespace BTCPayServer.Plugins.Wabisabi;
 public class WabisabiCoordinatorClientInstanceManager:IHostedService
 {
     private readonly IServiceProvider _provider;
+    private readonly WalletProvider _walletProvider;
     public Dictionary<string, WabisabiCoordinatorClientInstance> HostedServices { get; set; } = new();
     
-    public WabisabiCoordinatorClientInstanceManager(IServiceProvider provider)
+    public WabisabiCoordinatorClientInstanceManager(IServiceProvider provider, WalletProvider walletProvider )
     {
         _provider = provider;
+        _walletProvider = walletProvider;
+        _walletProvider.WalletUnloaded += WalletProviderOnWalletUnloaded;
+        
+    }
+
+    private void WalletProviderOnWalletUnloaded(object sender, WalletProvider.WalletUnloadEventArgs e)
+    {
+        _ =StopWallet(e.Wallet);
     }
 
     private bool started = false;
@@ -49,12 +58,24 @@ public class WabisabiCoordinatorClientInstanceManager:IHostedService
             await coordinatorManager.Value.StopAsync(cancellationToken);
         }
     }
-    
-    
+
+    public async Task StopWallet(string name)
+    {
+        foreach (var servicesValue in HostedServices.Values)
+        {
+            await servicesValue.StopWallet(name);
+        }
+    }
+
+
 
     public  void AddCoordinator(string displayName, string name,
-        Func<IServiceProvider, Uri> fetcher)
+        Func<IServiceProvider, Uri> fetcher, string termsConditions = null)
     {
+        if (HostedServices.ContainsKey(name))
+        {
+            return;
+        }
         var instance = new WabisabiCoordinatorClientInstance(
             displayName,
             name, fetcher.Invoke(_provider), _provider.GetService<ILoggerFactory>(), _provider, UTXOLocker,
@@ -64,6 +85,17 @@ public class WabisabiCoordinatorClientInstanceManager:IHostedService
             if(started)
                 _ = instance.StartAsync(CancellationToken.None);
         }
+    }
+
+    public async Task RemoveCoordinator(string name)
+    {
+        if (!HostedServices.TryGetValue(name, out var s))
+        {
+            return;
+        }
+
+        await s.StopAsync(CancellationToken.None);
+        HostedServices.Remove(name);
     }
 }
 

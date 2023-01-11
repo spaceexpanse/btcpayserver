@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
+using BTCPayServer.Abstractions.Contracts;
 using BTCPayServer.Client;
 using BTCPayServer.Client.Models;
 using NBitcoin;
@@ -20,15 +21,17 @@ namespace BTCPayServer.Plugins.Wabisabi;
 public class NBXInternalDestinationProvider : IDestinationProvider
 {
     private readonly ExplorerClient _explorerClient;
+    private readonly IBTCPayServerClientFactory _btcPayServerClientFactory;
     private readonly DerivationStrategyBase _derivationStrategy;
     private readonly BTCPayServerClient _client;
     private readonly string _storeId;
     private readonly WabisabiStoreSettings _wabisabiStoreSettings;
 
-    public NBXInternalDestinationProvider(ExplorerClient explorerClient, 
+    public NBXInternalDestinationProvider(ExplorerClient explorerClient, IBTCPayServerClientFactory btcPayServerClientFactory,
         DerivationStrategyBase derivationStrategy, BTCPayServerClient client, string storeId, WabisabiStoreSettings wabisabiStoreSettings)
     {
         _explorerClient = explorerClient;
+        _btcPayServerClientFactory = btcPayServerClientFactory;
         _derivationStrategy = derivationStrategy;
         _client = client;
         _storeId = storeId;
@@ -41,7 +44,8 @@ public class NBXInternalDestinationProvider : IDestinationProvider
         {
             try
             {
-                var pm = await _client.GetStoreOnChainPaymentMethod(_wabisabiStoreSettings.MixToOtherWallet,
+                var mixClient = await _btcPayServerClientFactory.Create(null, _wabisabiStoreSettings.MixToOtherWallet);
+                var pm = await mixClient.GetStoreOnChainPaymentMethod(_wabisabiStoreSettings.MixToOtherWallet,
                     "BTC");
                 
                var deriv =   _explorerClient.Network.DerivationStrategyFactory.Parse(pm.DerivationScheme);

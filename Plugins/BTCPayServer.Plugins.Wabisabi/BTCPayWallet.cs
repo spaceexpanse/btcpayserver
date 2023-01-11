@@ -143,7 +143,11 @@ public class BTCPayWallet : IWallet
 
             var client = await BtcPayServerClientFactory.Create(null, StoreId);
             var utxos = await client.GetOnChainWalletUTXOs(StoreId, "BTC");
-            
+            var objs = client.GetOnChainWalletObjects(StoreId, "BTC",
+                new GetWalletObjectsRequest()
+                {
+                    Type = "utxo", Ids = utxos.Select(data => data.Outpoint.ToString()).ToArray()
+                });
             if (!WabisabiStoreSettings.PlebMode)
             {
                 if (WabisabiStoreSettings.InputLabelsAllowed?.Any() is true)
@@ -233,7 +237,15 @@ public class BTCPayWallet : IWallet
             
             var storeIdForutxo = WabisabiStoreSettings.PlebMode ||
                 string.IsNullOrEmpty(WabisabiStoreSettings.MixToOtherWallet)? StoreId: WabisabiStoreSettings.MixToOtherWallet;
-            var client = await BtcPayServerClientFactory.Create(null, StoreId, storeIdForutxo);
+            var client = await BtcPayServerClientFactory.Create(null, StoreId);
+            BTCPayServerClient utxoClient = client;
+            DerivationStrategyBase utxoDerivationScheme = DerivationScheme;
+            if (storeIdForutxo != StoreId)
+            {
+                utxoClient = await BtcPayServerClientFactory.Create(null, storeIdForutxo);
+                var pm  = await utxoClient.GetStoreOnChainPaymentMethod(storeIdForutxo, "BTC");
+                utxoDerivationScheme = ExplorerClient.Network.DerivationStrategyFactory.Parse(pm.DerivationScheme);
+            }
             var kp = await ExplorerClient.GetMetadataAsync<RootedKeyPath>(DerivationScheme,
                 WellknownMetadataKeys.AccountKeyPath);
             
@@ -243,16 +255,16 @@ public class BTCPayWallet : IWallet
             var labels = new[]
             {
                 new AddOnChainWalletObjectRequest() {Id = "coinjoin", Type = "label"},
-                new AddOnChainWalletObjectRequest() {Id = coordinatorName, Type = "label"},
-                new AddOnChainWalletObjectRequest("label", "payout")
+                new AddOnChainWalletObjectRequest() {Id = coordinatorName, Type = "label"}
             };
 
 
-            var payoutLabels = result.HandledPayments.Select(pair =>
-                new AddOnChainWalletObjectRequest() {Id = pair.Value.Identifier, Type = "payout"});
-            await client.AddOrUpdateOnChainWalletObject(StoreId, "BTC", txObject);
             
-            foreach (var label in labels.Concat(payoutLabels))
+            await client.AddOrUpdateOnChainWalletObject(StoreId, "BTC", txObject);
+            if(storeIdForutxo != StoreId)
+                await utxoClient.AddOrUpdateOnChainWalletObject(storeIdForutxo, "BTC", txObject);
+            
+            foreach (var label in labels)
             {
                 await client.AddOrUpdateOnChainWalletObject(StoreId, "BTC", label);
                 await client.AddOrUpdateOnChainWalletLink(StoreId, "BTC", txObject, new AddOnChainWalletObjectLinkRequest()
@@ -260,16 +272,43 @@ public class BTCPayWallet : IWallet
                     Id = label.Id,
                     Type = label.Type
                 }, CancellationToken.None);
+
+                if (storeIdForutxo != StoreId)
+                {await utxoClient.AddOrUpdateOnChainWalletObject(storeIdForutxo, "BTC", label);
+                    await utxoClient.AddOrUpdateOnChainWalletLink(storeIdForutxo, "BTC", txObject, new AddOnChainWalletObjectLinkRequest()
+                    {
+                        Id = label.Id,
+                        Type = label.Type
+                    }, CancellationToken.None);
+                }
             }
 
             List<(IndexedTxOut txout, Task<KeyPathInformation>)> scriptInfos = new();
-            foreach (var label in payoutLabels)
+            var payoutLabels = 
+            result.HandledPayments.Select(pair =>
+                new AddOnChainWalletObjectRequest() {Id = pair.Value.Identifier, Type = "payout"});
+
+            if (payoutLabels.Any())
             {
-                await client.AddOrUpdateOnChainWalletLink(StoreId, "BTC", label, new AddOnChainWalletObjectLinkRequest()
+
+                await client.AddOrUpdateOnChainWalletObject(StoreId, "BTC",
+                    new AddOnChainWalletObjectRequest("label", "payout"));
+                await client.AddOrUpdateOnChainWalletLink(StoreId, "BTC", txObject,
+                    new AddOnChainWalletObjectLinkRequest("label", "payout"));
+
+
+                foreach (var label in payoutLabels)
                 {
-                    Id = "payout",
-                    Type = "label"
-                }, CancellationToken.None);
+
+                    await client.AddOrUpdateOnChainWalletObject(StoreId, "BTC", label);
+                    await client.AddOrUpdateOnChainWalletLink(StoreId, "BTC", txObject,
+                        new AddOnChainWalletObjectLinkRequest() {Id = label.Id, Type = label.Type},
+                        CancellationToken.None);
+
+                    await client.AddOrUpdateOnChainWalletLink(StoreId, "BTC", label,
+                        new AddOnChainWalletObjectLinkRequest() {Id = "payout", Type = "label"},
+                        CancellationToken.None);
+                }
             }
 
             Dictionary<IndexedTxOut, PendingPayment> indexToPayment = new();
@@ -278,15 +317,6 @@ public class BTCPayWallet : IWallet
                 var txout = result.UnsignedCoinJoin.Outputs.AsIndexedOutputs()
                     .Single(@out => @out.TxOut.ScriptPubKey == script);
 
-                
-                //create the utxo object 
-                var newutxo = txout.ToCoin().Outpoint.ToString();
-                var utxoObject = new AddOnChainWalletObjectRequest()
-                {
-                    Id = newutxo,
-                    Type = "utxo"
-                };
-                await client.AddOrUpdateOnChainWalletObject(StoreId, "BTC", utxoObject);
                 
                 //this was not a mix to self, but rather a payment
                 var isPayment = result.HandledPayments.Where(pair =>
@@ -297,40 +327,58 @@ public class BTCPayWallet : IWallet
                    continue;
                 }
 
-                scriptInfos.Add((txout, ExplorerClient.GetKeyInformationAsync(DerivationScheme, script)));
-                
+                scriptInfos.Add((txout, ExplorerClient.GetKeyInformationAsync(BlockchainAnalyzer.StdDenoms.Contains(txout.TxOut.Value)?utxoDerivationScheme:DerivationScheme, script)));
             }
 
             await Task.WhenAll(scriptInfos.Select(t => t.Item2));
-                scriptInfos = scriptInfos.Where(tuple => tuple.Item2.Result is not null).ToList();
-                var smartTx = new SmartTransaction(result.UnsignedCoinJoin, new Height(HeightType.Unknown));
-                result.RegisteredCoins.ForEach(coin =>
+            var scriptInfos2 = scriptInfos.Where(tuple => tuple.Item2.Result is not null).ToDictionary(tuple => tuple.txout.TxOut.ScriptPubKey);
+            var smartTx = new SmartTransaction(result.UnsignedCoinJoin, new Height(HeightType.Unknown));
+            result.RegisteredCoins.ForEach(coin =>
+            {
+                coin.HdPubKey.SetKeyState(KeyState.Used);
+                coin.SpenderTransaction = smartTx;
+                smartTx.TryAddWalletInput(coin);
+            });
+            result.RegisteredOutputs.ForEach(s =>
+            {
+                if (scriptInfos2.TryGetValue(s, out var si))
                 {
-                    coin.HdPubKey.SetKeyState(KeyState.Used);
-                    coin.SpenderTransaction = smartTx;
-                    smartTx.TryAddWalletInput(coin);
-                });
-                
-                
-                scriptInfos.ForEach(information =>
-                {
-                    var derivation = DerivationScheme.GetChild(information.Item2.Result.KeyPath).GetExtPubKeys().First().PubKey;
-                    var hdPubKey = new HdPubKey(derivation, kp.Derive(information.Item2.Result.KeyPath).KeyPath, SmartLabel.Empty,
+                    var derivation = DerivationScheme.GetChild(si.Item2.Result.KeyPath).GetExtPubKeys().First()
+                        .PubKey;
+                    var hdPubKey = new HdPubKey(derivation, kp.Derive(si.Item2.Result.KeyPath).KeyPath,
+                        SmartLabel.Empty,
                         KeyState.Used);
                     
-                    var coin =new SmartCoin(smartTx, information.txout.N, hdPubKey);
+                    var coin = new SmartCoin(smartTx, si.txout.N, hdPubKey);
                     smartTx.TryAddWalletOutput(coin);
-                });
-                try
-                {
+                }
+            });
 
-                    BlockchainAnalyzer.Analyze(smartTx);
-                }
-                catch (Exception e)
-                {
-                    Logger.LogError($"Failed to analyza anonsets of tx {smartTx.GetHash()}");
-                }
-                foreach (SmartCoin smartTxWalletOutput in smartTx.WalletOutputs)
+            //
+            // scriptInfos.ForEach(information =>
+            // {
+            //     var derivation = DerivationScheme.GetChild(information.Item2.Result.KeyPath).GetExtPubKeys().First()
+            //         .PubKey;
+            //     var hdPubKey = new HdPubKey(derivation, kp.Derive(information.Item2.Result.KeyPath).KeyPath,
+            //         SmartLabel.Empty,
+            //         KeyState.Used);
+            //
+            //     var coin = new SmartCoin(smartTx, information.txout.N, hdPubKey);
+            //     smartTx.TryAddWalletOutput(coin);
+            // });
+            
+            
+            try
+            {
+                BlockchainAnalyzer.Analyze(smartTx);
+            }
+            catch (Exception e)
+            {
+                Logger.LogError($"Failed to analyze anonsets of tx {smartTx.GetHash()}");
+            }
+
+
+            foreach (SmartCoin smartTxWalletOutput in smartTx.WalletOutputs)
                 {
                     var utxoObject = new AddOnChainWalletObjectRequest()
                     {
@@ -340,12 +388,18 @@ public class BTCPayWallet : IWallet
                     if (BlockchainAnalyzer.StdDenoms.Contains(smartTxWalletOutput.TxOut.Value.Satoshi) && smartTxWalletOutput.AnonymitySet != 1)
                     {
                         
-                        await client.AddOrUpdateOnChainWalletObject(storeIdForutxo, "BTC", new AddOnChainWalletObjectRequest( "utxo", smartTxWalletOutput.Outpoint.ToString()));
-                        await client.AddOrUpdateOnChainWalletObject(storeIdForutxo, "BTC", new AddOnChainWalletObjectRequest( "label", $"anonset-{smartTxWalletOutput.AnonymitySet}"));
+                        await utxoClient.AddOrUpdateOnChainWalletObject(storeIdForutxo, "BTC", new AddOnChainWalletObjectRequest( "utxo", smartTxWalletOutput.Outpoint.ToString())
+                        {
+                            Data = JObject.FromObject(new
+                            {
+                                smartTxWalletOutput.AnonymitySet
+                            })
+                        });
+                        await utxoClient.AddOrUpdateOnChainWalletObject(storeIdForutxo, "BTC", new AddOnChainWalletObjectRequest( "label", $"anonset-{smartTxWalletOutput.AnonymitySet}"));
 
                         if (smartTxWalletOutput.AnonymitySet != 1)
                         {
-                            await client.AddOrUpdateOnChainWalletLink(storeIdForutxo, "BTC", utxoObject, 
+                            await utxoClient.AddOrUpdateOnChainWalletLink(storeIdForutxo, "BTC", utxoObject, 
                                 new AddOnChainWalletObjectLinkRequest() {Id =  $"anonset-{smartTxWalletOutput.AnonymitySet}", Type = "label"}, CancellationToken.None);
 
                         }

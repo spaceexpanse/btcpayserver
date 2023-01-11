@@ -4,12 +4,12 @@
 @{
     var storeId = ScopeProvider.GetCurrentStoreId();
     var isActive = !string.IsNullOrEmpty(storeId) && ViewContext.RouteData.Values.TryGetValue("Controller", out var controller) &&  controller is not null && 
-        nameof(WabisabiController).StartsWith(controller?.ToString(), StringComparison.InvariantCultureIgnoreCase);
+        nameof(WabisabiStoreController).StartsWith(controller?.ToString(), StringComparison.InvariantCultureIgnoreCase);
 }
 @if (!string.IsNullOrEmpty(storeId))
 {
     <li class="nav-item">
-        <a asp-area="" asp-controller="Wabisabi" asp-action="UpdateWabisabiStoreSettings" asp-route-storeId="@storeId" class="nav-link js-scroll-trigger @(isActive? "active": string.Empty)">
+        <a asp-area="" asp-controller="WabisabiStore" asp-action="UpdateWabisabiStoreSettings" asp-route-storeId="@storeId" class="nav-link js-scroll-trigger @(isActive? "active": string.Empty)">
             <svg role="img" class="icon">
             </svg>
             <span>Wabisabi</span>
