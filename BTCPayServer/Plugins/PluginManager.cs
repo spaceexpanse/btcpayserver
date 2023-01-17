@@ -237,7 +237,6 @@ namespace BTCPayServer.Plugins
                     }
                     if (Directory.Exists(dirName))
                     {
-                        _logger.LogInformation($"Uninstalling {command.extension}");
                         Directory.Delete(dirName, true);
                         if (!ignoreOrder && File.Exists(Path.Combine(pluginsFolder, "order")))
                         {
@@ -253,7 +252,6 @@ namespace BTCPayServer.Plugins
                     var fileName = dirName + BTCPayPluginSuffix;
                     if (File.Exists(fileName))
                     {
-                        _logger.LogInformation($"Installing {command.extension}");
                         ZipFile.ExtractToDirectory(fileName, dirName, true);
                         if (!ignoreOrder)
                         {
