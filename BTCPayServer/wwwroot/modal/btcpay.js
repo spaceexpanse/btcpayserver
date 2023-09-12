@@ -116,6 +116,31 @@
             };
         }).catch(console.error);
     }
+    function startNfcWrite(records) {
+        const ndef = new NDEFReader();
+        readerAbortController = new AbortController()
+        readerAbortController.signal.onabort = () => {
+            this.scanning = false;
+        };
+        ndef.write({ signal:readerAbortController.signal, records }).then(() => {
+            
+            ndef.onreading = event => {
+                const message = event.message;
+                const record = message.records[0];
+                const textDecoder = new TextDecoder('utf-8');
+                const data = textDecoder.decode(record.data);
+
+                // Send NFC data back to the iframe
+                if (iframe) {
+                    iframe.contentWindow.postMessage({ action: 'nfc:data', data }, '*');
+                }
+            };
+        }).catch(reason =>
+        {
+            iframe.contentWindow.postMessage({ action: 'nfc:error' }, '*');
+            console.error(reason);            
+        });
+    }
     
     function receiveMessage(event) {
         if (!origin.startsWith(event.origin) || !showingInvoice) {
@@ -127,6 +152,10 @@
             showFrame();
         } else if (event.data === 'nfc:startScan') {
             startNfcScan();
+        }
+        else if (typeof event.data == "string" &&  event.data.startsWith('nfc:startwrite')) {
+            const records = JSON.parse(event.data.replace('nfc:startwrite', ''));
+            startNfcWrite(records);
         } else if (event.data === 'nfc:abort') {
             if (readerAbortController) {
                 readerAbortController.abort()

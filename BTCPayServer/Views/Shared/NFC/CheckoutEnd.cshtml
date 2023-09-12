@@ -1,13 +1,41 @@
 @using BTCPayServer.Abstractions.Extensions
 @using BTCPayServer.Abstractions.TagHelpers
+
+<style>
+    .btn-group .rounded-pill.btn:first-child:not(:last-child){
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;;
+    }
+    .btn-group .rounded-pill.btn:last-child:not(:first-child){
+    border-top-left-radius: 0 !important;;
+        border-bottom-left-radius: 0 !important;;
+        }
+</style>
 <template id="lnurl-withdraw-template">
     <template v-if="display">
         <div class="mt-4">
-            <p id="CheatSuccessMessage" class="alert alert-success text-break" v-if="successMessage" v-text="successMessage"></p>
-            <p id="CheatErrorMessage" class="alert alert-danger text-break" v-if="errorMessage" v-text="errorMessage"></p>
+            <p class="alert alert-success text-break" v-if="successMessage" v-text="successMessage"></p>
+            <p class="alert alert-danger text-break" v-if="errorMessage" v-text="errorMessage"></p>
             <template v-if="isV2">
-                <button class="btn btn-secondary rounded-pill w-100" type="button" id="PayByNFC"
-                    :disabled="scanning || submitting" v-on:click="handleClick">{{btnText}}</button>
+                <div class="btn-group w-100">
+                    <button v-if="lnurlwSupported" class="btn rounded-pill w-50" id="PayByNFC"
+                            type="button" 
+                            :disabled="submitting " 
+                            v-on:click="handleClick('lnurlw')" 
+                            :class="{'btn-primary': mode=== 'lnurlw', 'btn-secondary':mode!== 'lnurlw' }">
+                          <template v-if="mode==='lnurlw'">{{actionText || 'Bolt card'}}</template>
+                                                <template v-else>Bolt card</template>
+                    </button>
+                    <button class="btn rounded-pill" v-if="!testFallback"
+                            type="button" :disabled="submitting " 
+                            v-on:click="handleClick('url')" 
+                            :class="{'btn-primary': mode!== 'lnurlw', 'btn-secondary':mode=== 'lnurlw', 'w-50': lnurlwSupported, 'w-100':!lnurlwSupported }">
+                        <template v-if="mode==='url'">{{actionText || 'NFC'}}</template>
+                        <template v-else>NFC</template>
+                    </button>
+                </div>
+
+
             </template>
             <bp-loading-button v-else>
                 <button class="action-button" style="margin: 0 45px;width:calc(100% - 90px) !important" :disabled="scanning || submitting" v-on:click="handleClick" id="PayByNFC"
@@ -36,16 +64,31 @@ class NDEFReaderWrapper {
         }
         window.parent.postMessage('nfc:startScan', '*');
     }
+    
+    async write(opts) {
+        if (opts && opts.signal){
+            opts.signal.addEventListener('abort', () => {
+                window.parent.postMessage('nfc:abort', '*');
+            });
+        }
+        
+        window.parent.postMessage('nfc:startwrite'+JSON.stringify(opts.records), '*');
+    }
+    
 }
 
 Vue.component("lnurl-withdraw-checkout", {
     template: "#lnurl-withdraw-template",
     props: {
         model: Object,
-        isV2: Boolean
+        isV2: Boolean,
+        mode: localStorage.getItem("btcpay_invoice_nfc_mode") || "url"
     },
     computed: {
-        display () {
+        display (){
+           return this.supported || (this.lnurlwSupported && this.testFallback);
+        },
+        lnurlwSupported () {
             const {
                 onChainWithLnInvoiceFallback: isUnified,
                 paymentMethodId: activePaymentMethodId,
@@ -57,15 +100,22 @@ Vue.component("lnurl-withdraw-checkout", {
                 !!availablePaymentMethods.find(pm => ['BTC_LNURLPAY', 'BTC_LightningLike'].includes(pm.paymentMethodId)) ||
                 // Or the BIP21 payment URL flags Lightning support
                 !!paymentUrl.match(/lightning=ln/i)
-            const isAvailable = activePaymentMethodId === 'BTC_LNURLPAY' || (
+            return  activePaymentMethodId === 'BTC_LNURLPAY' || (
                 // Unified QR/BIP21 case
                 (activePaymentMethodId === 'BTC' && isUnified && lnurlwAvailable) ||
                 // Lightning with LNURL available
                 (activePaymentMethodId === 'BTC_LightningLike' && lnurlwAvailable))
-            return isAvailable && (this.supported || this.testFallback)
         },
         testFallback () {
             return !this.supported && window.location.search.match('lnurlwtest=(1|true)')
+        },
+        actionText (){
+            if (this.submitting) {
+                                return this.isV2 ? this.$t('submitting_nfc') : 'Submitting NFC …'
+                            } else if (this.scanning) {
+                                return this.isV2 ? this.$t('scanning_nfc') : 'Scanning NFC …'
+                            }
+            return "";
         },
         btnText () {
             if (this.supported) {
@@ -105,16 +155,40 @@ Vue.component("lnurl-withdraw-checkout", {
         }
     },
     beforeDestroy () {
-        if (this.readerAbortController) {
-            this.readerAbortController.abort()
-        }
+        this.cancelScan();
     },
     methods: {
-        async handleClick () {
+        waitForNotScanScan(res) {
+            if (this.scanning) {
+                setTimeout(() => { this.waitForNotScanScan(promise) }, 100);
+            } else {
+                res();
+            }
+        },   
+        async cancelScan() {
+            if (this.scanning) {
+                if (this.readerAbortController) {
+                    this.readerAbortController.abort();
+                }
+                
+                await new Promise((resolve,rej)=>{
+                    this.waitForNotScanScan(resolve);
+                });
+            }
+        },
+        async handleClick (mode) {
+            if (this.scanning || this.submitting) {
+                await this.cancelScan();                
+            }
+            if (mode){
+                this.mode = mode; 
+                localStorage.setItem("btcpay_invoice_nfc_mode", mode) 
+            }            
+            
             if (this.supported) {
                 this.startScan()
-            } else {
-                if (this.model.isUnsetTopUp) {
+            } else if (this.mode === 'lnurlw'){
+                if (this.model.isUnsetTopUp ){
                     this.handleUnsetTopUp()
                     if (!this.amount) {
                         return;
@@ -141,6 +215,7 @@ Vue.component("lnurl-withdraw-checkout", {
             if (this.scanning || this.submitting) {
                 return;
             }
+            this.errorMessage = null;
             if (this.model.isUnsetTopUp) {
                 this.handleUnsetTopUp()
                 if (!this.amount) {
@@ -157,39 +232,46 @@ Vue.component("lnurl-withdraw-checkout", {
                     this.scanning = false;
                 };
                 
-                await ndef.scan({ signal: this.readerAbortController.signal })
-
-                ndef.onreadingerror = () => this.reportNfcError('Could not read NFC tag')
-
-                ndef.onreading = async ({ message }) => {
-                    const record = message.records[0]
-                    const textDecoder = new TextDecoder('utf-8')
-                    const lnurl = textDecoder.decode(record.data)
-                    await this.sendData(lnurl)
-                }
+                if (this.mode === 'url') {
+                    debugger;
+                   await ndef.write({ signal: this.readerAbortController.signal, records: [{ recordType: 'url', data: this.model.invoiceBitcoinUrl }] })
+                    return;
+                }else{
+                    await ndef.scan({ signal: this.readerAbortController.signal })
                 
-                if (inModal) {
-                    // receive messages from iframe
-                    window.addEventListener('message', async event => {
-                        // deny messages from other origins
-                        if (event.origin !== window.location.origin) return
-                        
-                        const { action, data } = event.data
-                        switch (action) {
-                            case 'nfc:data':
-                                await this.sendData(data)
-                                break;
-                            case 'nfc:error':
-                                this.reportNfcError('Could not read NFC tag')
-                                break;
-                        }
-                    });
+                    ndef.onreadingerror = () => this.reportNfcError('Could not read NFC tag')
+                
+                    ndef.onreading = async ({ message }) => {
+                        const record = message.records[0]
+                        const textDecoder = new TextDecoder('utf-8')
+                        const lnurl = textDecoder.decode(record.data)
+                        await this.sendData(lnurl)
+                    }
+                    
+                    if (inModal) {
+                        // receive messages from iframe
+                        window.addEventListener('message', async event => {
+                            // deny messages from other origins
+                            if (event.origin !== window.location.origin) return
+                            
+                            const { action, data } = event.data
+                            switch (action) {
+                                case 'nfc:data':
+                                    await this.sendData(data)
+                                    break;
+                                case 'nfc:error':
+                                    this.reportNfcError('Could not read NFC tag')
+                                    break;
+                            }
+                        });
+                    }
                 }
                 
                 // we came here, so the user must have allowed NFC access
                 this.permissionGranted = true;
             } catch (error) {
                 this.reportNfcError(`NFC scan failed: ${error}`);
+                this.scanning = false;
             }
         },
         async sendData (lnurl) {
