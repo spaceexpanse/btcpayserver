@@ -9,6 +9,7 @@ using BTCPayServer.Configuration;
 using BTCPayServer.Payments;
 using BTCPayServer.Services.Altcoins.Monero.Configuration;
 using BTCPayServer.Services.Altcoins.Monero.Payments;
+using BTCPayServer.Services.Altcoins.Monero.Payouts;
 using BTCPayServer.Services.Altcoins.Monero.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,6 +43,7 @@ namespace BTCPayServer.Services.Altcoins.Monero
             serviceCollection.AddSingleton<IUIExtension>(new UIExtension("Monero/StoreNavMoneroExtension",  "store-nav"));
             serviceCollection.AddSingleton<IUIExtension>(new UIExtension("Monero/StoreWalletsNavMoneroExtension",  "store-wallets-nav"));
             serviceCollection.AddSingleton<ISyncSummaryProvider, MoneroSyncSummaryProvider>();
+            serviceCollection.AddSingleton<IPayoutHandler, MoneroLikePayoutHandler>();
 
             return serviceCollection;
         }

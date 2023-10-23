@@ -77,7 +77,7 @@ namespace BTCPayServer.Services.Altcoins.Monero.RPC
             public static NoRequestModel Instance = new NoRequestModel();
         }
 
-        internal class JsonRpcApiException : Exception
+        public class JsonRpcApiException : Exception
         {
             public JsonRpcResultError Error { get; set; }
 

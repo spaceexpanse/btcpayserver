@@ -190,6 +190,7 @@ namespace BTCPayServer.Services.Altcoins.Monero.UI
                         }
                     }
 
+                    Directory.CreateDirectory(configurationItem.WalletDirectory);
                     var fileAddress = Path.Combine(configurationItem.WalletDirectory, "wallet");
                     using (var fileStream = new FileStream(fileAddress, FileMode.Create))
                     {
